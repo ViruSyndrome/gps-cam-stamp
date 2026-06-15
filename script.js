@@ -561,8 +561,17 @@ function downloadPhoto() {
 }
 
 function downloadCanvas(canvas, filename) {
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  // iOS Safari ignores the `download` attribute — open in new tab so user can long-press → Save
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
+  if (isIOS) {
+    const w = window.open();
+    w.document.write('<html><head><title>Save Photo</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#fff;gap:16px;padding:16px;box-sizing:border-box}p{margin:0;font-size:15px;text-align:center;opacity:.85}</style></head><body><p>Long-press the image below → <strong>Add to Photos</strong> to save</p><img src="' + dataUrl + '" style="max-width:100%;border-radius:8px"></body></html>');
+    w.document.close();
+    return;
+  }
   const a = document.createElement('a');
-  a.href     = canvas.toDataURL('image/jpeg', 0.92);
+  a.href     = dataUrl;
   a.download = filename;
   a.click();
 }
