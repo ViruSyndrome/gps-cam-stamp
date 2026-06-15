@@ -18,6 +18,9 @@ let batchImages    = [];     // [{img, filename}] for batch mode
 let mapTileImg  = null;   // OSM tile Image for map thumbnail
 let mapTilePin  = null;   // {px, py} pin pixel position within 256×256 tile
 let weatherData = null;   // {temp, unit, condition, icon}
+let tempUnit    = 'C';    // 'C' | 'F' — auto-detected from locale/country
+let coordFmt    = 'decimal'; // 'decimal' | 'dms'
+let dateFmt     = 'dmy';  // 'dmy' | 'mdy' | 'iso' — auto-detected from locale
 
 // ── DOM refs (resolved after DOMContentLoaded) ───────────
 let gpsBar, gpsStatus, camVideo, stampCanvas, previewWrap;
@@ -30,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   stampCanvas = document.getElementById('stampCanvas');
   previewWrap = document.getElementById('previewWrap');
 
+  detectLocaleDefaults();
   requestGPS();
   startCamera();
   setupUpload();
@@ -56,7 +60,8 @@ function onGPSSuccess(pos) {
     lng:      pos.coords.longitude,
     altitude: pos.coords.altitude,
     accuracy: pos.coords.accuracy,
-    heading:  pos.coords.heading
+    heading:  pos.coords.heading,
+    speed:    pos.coords.speed
   };
   const lat = gpsData.lat.toFixed(5);
   const lng = gpsData.lng.toFixed(5);
@@ -97,6 +102,7 @@ async function fetchAddress(lat, lng) {
       postcode: json.address?.postcode || ''
     };
     addressCache[key] = addressData;
+    refineTempUnit(addressData.country);
     // Update GPS bar with address
     if (addressData.road) {
       setGPSStatus('found', `📍 ${addressData.road}${addressData.city ? ', ' + addressData.city : ''}`);
@@ -106,6 +112,54 @@ async function fetchAddress(lat, lng) {
   } catch (_) {
     // Silently fail — lat/lng will still show on stamp
   }
+}
+
+// ── Locale / format detection ────────────────────────────
+function detectLocaleDefaults() {
+  try {
+    // Detect date order from browser locale
+    const parts = new Intl.DateTimeFormat(undefined, {
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date(2023, 2, 4));
+    const order = parts.filter(p => p.type !== 'literal').map(p => p.type);
+    if (order[0] === 'year') dateFmt = 'iso';
+    else if (order[0] === 'month') dateFmt = 'mdy';
+    else dateFmt = 'dmy';
+  } catch (_) { dateFmt = 'dmy'; }
+  // Initial temp guess from language (refined to country when address loads)
+  tempUnit = (navigator.language || '').startsWith('en-US') ? 'F' : 'C';
+  updateFmtUI();
+}
+
+function refineTempUnit(country) {
+  if (!country) return;
+  const fahr = ['United States', 'Liberia', 'Myanmar'];
+  const prev = tempUnit;
+  tempUnit = fahr.some(c => country.includes(c)) ? 'F' : 'C';
+  if (tempUnit !== prev) { updateFmtUI(); if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp(); }
+}
+
+function updateFmtUI() {
+  document.getElementById('fmt-c')?.classList.toggle('active', tempUnit === 'C');
+  document.getElementById('fmt-f')?.classList.toggle('active', tempUnit === 'F');
+  document.getElementById('fmt-dec')?.classList.toggle('active', coordFmt === 'decimal');
+  document.getElementById('fmt-dms')?.classList.toggle('active', coordFmt === 'dms');
+  ['dmy','mdy','iso'].forEach(f => {
+    document.getElementById('fmt-' + f)?.classList.toggle('active', dateFmt === f);
+  });
+}
+
+function setTempUnit(u) { tempUnit = u; updateFmtUI(); redrawStamp(); }
+function setCoordFmt(f) { coordFmt = f; updateFmtUI(); redrawStamp(); }
+function setDateFmt(f)  { dateFmt  = f; updateFmtUI(); redrawStamp(); }
+
+function toDMS(deg, axis) {
+  const abs = Math.abs(deg);
+  const d = Math.floor(abs);
+  const m = Math.floor((abs - d) * 60);
+  const s = Math.round(((abs - d) * 60 - m) * 60);
+  const dir = axis === 'lat' ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+  return `${d}°${m}'${s}"${dir}`;
 }
 
 // ── Map Tile (OpenStreetMap — free, attribution required) ──
@@ -422,9 +476,13 @@ function buildStampLines() {
   }
 
   if (chk('tog-coords') && gpsData) {
-    const lat = fmt(gpsData.lat, 5) + (gpsData.lat >= 0 ? 'N' : 'S');
-    const lng = fmt(Math.abs(gpsData.lng), 5) + (gpsData.lng >= 0 ? 'E' : 'W');
-    lines.push(`🌐 ${lat}  ${lng}`);
+    if (coordFmt === 'dms') {
+      lines.push(`🌐 ${toDMS(gpsData.lat,'lat')}  ${toDMS(gpsData.lng,'lng')}`);
+    } else {
+      const lat = fmt(gpsData.lat, 5) + (gpsData.lat >= 0 ? 'N' : 'S');
+      const lng = fmt(Math.abs(gpsData.lng), 5) + (gpsData.lng >= 0 ? 'E' : 'W');
+      lines.push(`🌐 ${lat}  ${lng}`);
+    }
   }
 
   if (chk('tog-altitude') && gpsData && gpsData.altitude != null) {
@@ -443,8 +501,18 @@ function buildStampLines() {
     lines.push(`🧭 ${headingLabel(gpsData.heading)} (${Math.round(gpsData.heading)}°)`);
   }
 
+  if (chk('tog-speed') && gpsData && gpsData.speed != null) {
+    const spd = tempUnit === 'F'
+      ? Math.round(gpsData.speed * 2.237) + ' mph'
+      : Math.round(gpsData.speed * 3.6) + ' km/h';
+    lines.push(`⚡ Speed: ${spd}`);
+  }
+
   if (chk('tog-weather') && weatherData) {
-    lines.push(`${weatherData.icon} ${weatherData.temp}${weatherData.unit}  ${weatherData.condition}`);
+    const wTemp = tempUnit === 'F'
+      ? Math.round(weatherData.temp * 9/5 + 32) + '°F'
+      : weatherData.temp + '°C';
+    lines.push(`${weatherData.icon} ${wTemp}  ${weatherData.condition}`);
   }
 
   const note = document.getElementById('customNote')?.value?.trim();
@@ -461,6 +529,8 @@ function fmtDate(d) {
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yy = d.getFullYear();
+  if (dateFmt === 'mdy') return `${mm}/${dd}/${yy}`;
+  if (dateFmt === 'iso') return `${yy}-${mm}-${dd}`;
   return `${dd}/${mm}/${yy}`;
 }
 function fmtTime(d) {

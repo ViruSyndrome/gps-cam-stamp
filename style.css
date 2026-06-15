@@ -287,6 +287,33 @@ img { max-width: 100%; display: block; }
 .toggle-label input:checked + .tog-dot::after { transform: translateX(14px); }
 .toggle-label.checked { border-color: var(--border-2); color: var(--text); }
 
+.fmt-settings {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.fmt-group {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.3rem 0.5rem;
+}
+.fmt-lbl {
+  font-size: 0.73rem; font-weight: 600; color: var(--text-muted);
+  white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.seg-ctrl {
+  display: flex; border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.seg-btn {
+  background: transparent; border: none; color: var(--text-muted);
+  font-size: 0.78rem; font-weight: 600; padding: 0.22rem 0.45rem;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+.seg-btn.active {
+  background: var(--accent-glow); color: var(--accent);
+}
+.seg-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.04); }
+
 .custom-input {
   width: 100%; background: var(--surface); border: 1px solid var(--border);
   color: var(--text); border-radius: 8px; padding: 0.55rem 0.75rem;

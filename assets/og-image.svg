@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#080e1a"/>
+      <stop offset="100%" style="stop-color:#0d1a30"/>
+    </linearGradient>
+    <linearGradient id="pin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Grid lines (subtle) -->
+  <line x1="0" y1="210" x2="1200" y2="210" stroke="rgba(14,165,233,0.05)" stroke-width="1"/>
+  <line x1="0" y1="420" x2="1200" y2="420" stroke="rgba(14,165,233,0.05)" stroke-width="1"/>
+  <line x1="400" y1="0" x2="400" y2="630" stroke="rgba(14,165,233,0.05)" stroke-width="1"/>
+  <line x1="800" y1="0" x2="800" y2="630" stroke="rgba(14,165,233,0.05)" stroke-width="1"/>
+
+  <!-- Glow blob behind icon -->
+  <ellipse cx="860" cy="315" rx="220" ry="220" fill="rgba(14,165,233,0.06)"/>
+
+  <!-- Icon group (right side) -->
+  <g transform="translate(680,115) scale(1.25)">
+    <!-- Pin shadow -->
+    <ellipse cx="100" cy="178" rx="20" ry="5" fill="rgba(0,0,0,0.4)"/>
+    <!-- GPS pin body -->
+    <path d="M100 22 C65 22 38 49 38 84 C38 112 57 132 100 176 C143 132 162 112 162 84 C162 49 135 22 100 22 Z" fill="url(#pin)"/>
+    <!-- Gloss -->
+    <ellipse cx="82" cy="56" rx="15" ry="10" fill="rgba(255,255,255,0.18)" transform="rotate(-35 82 56)"/>
+    <!-- Inner dark circle -->
+    <circle cx="100" cy="82" r="31" fill="#080e1a"/>
+    <!-- Outer lens ring -->
+    <circle cx="100" cy="82" r="24" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-opacity="0.6"/>
+    <!-- Aperture blades -->
+    <g transform="translate(100,82)">
+      <line x1="-14" y1="0" x2="14" y2="0" stroke="white" stroke-width="3" stroke-linecap="round" stroke-opacity="0.55"/>
+      <line x1="-7" y1="-12" x2="7" y2="12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-opacity="0.55"/>
+      <line x1="7" y1="-12" x2="-7" y2="12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-opacity="0.55"/>
+    </g>
+    <!-- Center dot -->
+    <circle cx="100" cy="82" r="6" fill="#0ea5e9"/>
+    <circle cx="100" cy="82" r="3" fill="white"/>
+  </g>
+
+  <!-- Brand name -->
+  <text x="90" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="84" font-weight="800" fill="white" letter-spacing="-2">GPS</text>
+  <text x="90" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="84" font-weight="800" fill="#0ea5e9" letter-spacing="-2">Cam</text>
+  <text x="90" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="84" font-weight="800" fill="white" letter-spacing="-2">Stamp</text>
+
+  <!-- Tagline -->
+  <text x="90" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="rgba(255,255,255,0.5)" letter-spacing="0.5">Free GPS photo stamping — works in your browser</text>
+
+  <!-- Domain -->
+  <text x="90" y="570" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="rgba(14,165,233,0.7)">gpscamstamp.com</text>
+</svg>

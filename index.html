@@ -36,14 +36,14 @@
   </script>
 
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="assets/favicon.png" type="image/png" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
 </head>
 <body>
 
 <!-- NAV -->
 <nav class="nav" role="navigation" aria-label="Main navigation">
   <a href="/" class="nav-brand" aria-label="GPS Cam Stamp home">
-    <div class="nav-logo" aria-hidden="true">📍</div>
+    <div class="nav-logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="18" height="18" aria-hidden="true"><path d="M100 22 C65 22 38 49 38 84 C38 112 57 132 100 176 C143 132 162 112 162 84 C162 49 135 22 100 22 Z" fill="white" opacity="0.95"/><circle cx="100" cy="82" r="31" fill="#0284c7"/><circle cx="100" cy="82" r="20" fill="none" stroke="white" stroke-width="4" stroke-opacity="0.7"/><circle cx="100" cy="82" r="7" fill="white"/></svg></div>
     <span class="nav-name">GPS<span>Cam</span>Stamp</span>
   </a>
   <ul class="nav-links" role="list">
@@ -173,7 +173,7 @@
             <input type="checkbox" id="tog-compass" onchange="redrawStamp()" aria-label="Show compass" />
             <div class="tog-dot" aria-hidden="true"></div> Compass
           </label>
-          <label class="toggle-label checked">
+          <label class="toggle-label">
             <input type="checkbox" id="tog-map" checked onchange="redrawStamp()" aria-label="Show map thumbnail" />
             <div class="tog-dot" aria-hidden="true"></div> Map
           </label>
@@ -181,6 +181,39 @@
             <input type="checkbox" id="tog-weather" onchange="redrawStamp()" aria-label="Show weather" />
             <div class="tog-dot" aria-hidden="true"></div> Weather
           </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-speed" onchange="redrawStamp()" aria-label="Show speed" />
+            <div class="tog-dot" aria-hidden="true"></div> Speed
+          </label>
+        </div>
+      </div>
+
+      <!-- Format settings -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Format Settings</div>
+        <div class="fmt-settings">
+          <div class="fmt-group">
+            <span class="fmt-lbl">Temp</span>
+            <div class="seg-ctrl">
+              <button id="fmt-c" class="seg-btn active" onclick="setTempUnit('C')" aria-pressed="true">°C</button>
+              <button id="fmt-f" class="seg-btn" onclick="setTempUnit('F')" aria-pressed="false">°F</button>
+            </div>
+          </div>
+          <div class="fmt-group">
+            <span class="fmt-lbl">Coords</span>
+            <div class="seg-ctrl">
+              <button id="fmt-dec" class="seg-btn active" onclick="setCoordFmt('decimal')" aria-pressed="true">Dec</button>
+              <button id="fmt-dms" class="seg-btn" onclick="setCoordFmt('dms')" aria-pressed="false">DMS</button>
+            </div>
+          </div>
+          <div class="fmt-group">
+            <span class="fmt-lbl">Date</span>
+            <div class="seg-ctrl">
+              <button id="fmt-dmy" class="seg-btn active" onclick="setDateFmt('dmy')" aria-pressed="true">DD/MM</button>
+              <button id="fmt-mdy" class="seg-btn" onclick="setDateFmt('mdy')" aria-pressed="false">MM/DD</button>
+              <button id="fmt-iso" class="seg-btn" onclick="setDateFmt('iso')" aria-pressed="false">ISO</button>
+            </div>
+          </div>
         </div>
       </div>
 
