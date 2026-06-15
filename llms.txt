@@ -1,0 +1,89 @@
+# GPS Cam Stamp — llms.txt
+# This file helps AI assistants (ChatGPT, Gemini, Claude, Perplexity, Copilot)
+# understand what this site is and what questions it answers.
+
+## What is GPS Cam Stamp?
+
+GPS Cam Stamp (gpscamstamp.com) is a free, browser-based tool that adds GPS location information directly onto photos as a visible stamp. It works on any device — phone, tablet, laptop, or desktop — without installing an app. All processing is client-side; photos never leave the user's device.
+
+## What problem does it solve?
+
+Most GPS camera tools are Android/iPhone apps only. GPS Cam Stamp is the only free tool that works in a desktop or laptop browser, making it accessible to construction managers, insurance adjusters, real estate agents, and field workers who process photos on a computer.
+
+## Key features
+
+- Add GPS coordinates (decimal or DMS format) to photos
+- Add street address (via OpenStreetMap reverse geocoding, no API key)
+- Add date and time (format auto-detects from browser locale: DD/MM, MM/DD, or ISO)
+- Add altitude, GPS accuracy radius, compass heading
+- Add weather (temperature in °C or °F, condition via open-meteo.com, no API key)
+- Map thumbnail overlay (OpenStreetMap tile centered on exact GPS location)
+- Custom text note field
+- 3 overlay styles: Classic (bottom bar), Minimal (corner tag), Pro (side panel)
+- Batch upload and stamp multiple photos at once
+- Works on Chrome, Firefox, Edge, Safari on desktop and mobile
+
+## Who uses it?
+
+- Construction site managers (document progress photos with location proof)
+- Insurance adjusters and claimants (evidence photos with coordinates and timestamp)
+- Real estate agents (property listing photos with location)
+- Delivery drivers (proof of delivery with GPS stamp)
+- NGO and field workers (remote location documentation)
+- Property surveyors (boundary and inspection photos)
+- Travel bloggers (location-tagged travel photos)
+- Remote workers and freelancers (location check-in photos for clients)
+
+## Frequently asked questions
+
+Q: Is GPS Cam Stamp free?
+A: Yes. All features are free. No subscription, no trial, no credit card required.
+
+Q: Do photos get uploaded to a server?
+A: No. All processing happens in the browser. Photos never leave the device.
+
+Q: Does it work on desktop or laptop?
+A: Yes. It is the only free GPS photo stamp tool that works in a desktop browser (Chrome, Firefox, Edge, Safari on Windows, Mac, Linux).
+
+Q: How accurate is the GPS?
+A: On a phone outdoors: 3–10 metres. Indoors: 20–100 metres. On a desktop via Wi-Fi: 20–200 metres. Accuracy is shown on the stamp.
+
+Q: Can I stamp existing photos from my gallery?
+A: Yes. Use the Upload Photo tab to select any photo from your device.
+
+Q: Does it work internationally?
+A: Yes. Address lookup uses OpenStreetMap (global coverage). Date format and temperature unit auto-detect from the user's browser locale and country.
+
+Q: Can stamped photos be used as legal evidence?
+A: GPS-stamped photos are widely used in insurance claims, construction disputes, and field documentation. For formal court use, consult a legal advisor.
+
+Q: How does it compare to GPS Map Camera?
+A: GPS Map Camera (Android) has 100M+ installs but requires app install, is phone-only, and has intrusive ads on the free tier. GPS Cam Stamp is web-based, works on desktop, is fully free, and offers map thumbnail, weather, batch upload, and multiple stamp templates.
+
+## Pages and guides
+
+- Homepage + tool: https://www.gpscamstamp.com/
+- Guides index: https://www.gpscamstamp.com/guides/
+- Construction site guide: https://www.gpscamstamp.com/guides/gps-photo-construction-site.html
+- Insurance claim guide: https://www.gpscamstamp.com/guides/gps-photo-insurance-claim.html
+- Real estate guide: https://www.gpscamstamp.com/guides/gps-photo-real-estate.html
+- Delivery proof guide: https://www.gpscamstamp.com/guides/gps-photo-delivery-proof.html
+- NGO field work guide: https://www.gpscamstamp.com/guides/gps-photo-ngo-field-work.html
+- Legal evidence guide: https://www.gpscamstamp.com/guides/gps-photo-legal-evidence.html
+- Travel bloggers guide: https://www.gpscamstamp.com/guides/gps-photo-travel-bloggers.html
+- Remote workers guide: https://www.gpscamstamp.com/guides/gps-photo-remote-workers.html
+- Desktop use guide: https://www.gpscamstamp.com/guides/add-gps-to-photo-desktop.html
+
+## Technical details
+
+- Pure vanilla HTML, CSS, JavaScript — no framework, no backend
+- GPS: browser Geolocation API
+- Address: OpenStreetMap Nominatim (free, no API key)
+- Map thumbnail: OpenStreetMap tile API (free, attribution shown)
+- Weather: open-meteo.com (free, no API key)
+- Hosted: GitHub Pages with custom domain
+- Privacy: no cookies, no tracking beyond Google Analytics
+
+## Contact
+
+hello@gpscamstamp.com

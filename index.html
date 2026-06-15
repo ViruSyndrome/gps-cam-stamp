@@ -22,19 +22,106 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="GPS Cam Stamp — Free GPS Photo Stamper" />
   <meta name="twitter:description" content="Add GPS coordinates, address and timestamp to photos. Free, no install, works on desktop and mobile." />
+  <meta name="twitter:image" content="https://www.gpscamstamp.com/assets/og-image.png" />
+  <meta name="twitter:site" content="@gpscamstamp" />
 
   <!-- JSON-LD -->
   <script type="application/ld+json">
+  [
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "GPS Cam Stamp",
     "url": "https://www.gpscamstamp.com/",
-    "description": "Free online tool to stamp photos with GPS coordinates, address, altitude, and timestamp. No app install required.",
+    "description": "Free online tool to stamp photos with GPS coordinates, address, altitude, date, time and weather. No app install required. Works on any browser on desktop and mobile.",
     "applicationCategory": "PhotographyApplication",
     "operatingSystem": "Any",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    "browserRequirements": "Requires JavaScript and Geolocation API support",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "featureList": [
+      "Add GPS coordinates to photos",
+      "Add address stamp to photos",
+      "Add timestamp to photos",
+      "Map thumbnail overlay",
+      "Weather stamp",
+      "Batch photo stamping",
+      "Works on desktop and mobile",
+      "No app install required",
+      "Photos never uploaded to server"
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is GPS Cam Stamp?",
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp is a free browser-based tool that adds GPS coordinates, address, altitude, date, time, and weather to your photos. It works on any device — phone, tablet, laptop or desktop — without installing an app. All photo processing happens on your device; nothing is uploaded to any server." }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I add GPS location to a photo for free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Open gpscamstamp.com in your browser, allow location access, then either take a photo with your camera or upload an existing photo. The tool reads your GPS coordinates and stamps them onto the image. Download the stamped photo instantly. The entire process is free with no account required." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is GPS Cam Stamp really free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes, completely free. All features — camera capture, photo upload, batch stamping, all 3 templates, all 8 GPS stamp fields including map thumbnail and weather — are free with no subscription, no trial period and no credit card." }
+      },
+      {
+        "@type": "Question",
+        "name": "Do my photos get uploaded to a server?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. Your photos never leave your device. All stamping happens entirely in your browser using the HTML5 Canvas API. GPS Cam Stamp has no server that receives or stores images, making it completely private." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I use GPS Cam Stamp on a laptop or desktop computer?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. GPS Cam Stamp works on Chrome, Firefox, Edge and Safari on Windows, Mac and Linux. This makes it unique — every GPS camera app on the App Store and Google Play is phone-only. On a laptop, location is determined via Wi-Fi triangulation, giving city-level accuracy suitable for most use cases." }
+      },
+      {
+        "@type": "Question",
+        "name": "How accurate is the GPS location stamp?",
+        "acceptedAnswer": { "@type": "Answer", "text": "On a phone outdoors with clear sky, GPS accuracy is typically 3 to 10 metres. Indoors or in built-up areas, accuracy is 20 to 100 metres. On a desktop or laptop using Wi-Fi, accuracy is 20 to 200 metres. The stamp shows the accuracy radius so you always know the precision." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I stamp existing photos I took earlier?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the Upload Photo tab to upload any photo from your gallery or file system. You can use your current GPS location or enter coordinates manually. This lets you stamp photos taken anywhere, including DSLR camera photos." }
+      },
+      {
+        "@type": "Question",
+        "name": "What information can I add to a photo stamp?",
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp can add up to 8 fields: street address, GPS coordinates (decimal or DMS format), altitude, date and time, GPS accuracy, compass heading, current weather with temperature, and a custom text note. A map thumbnail showing your exact location on an OpenStreetMap tile can also be added." }
+      },
+      {
+        "@type": "Question",
+        "name": "What are the stamp template styles available?",
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp offers three templates: Classic (dark bar across the bottom, like traditional camera date stamps), Minimal (small semi-transparent tag in the corner, good for real estate and travel photos), and Pro (structured side panel with a branded header, ideal for professional documentation)." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does GPS Cam Stamp work in India, USA, UK and other countries?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. GPS Cam Stamp works globally. Address lookup uses OpenStreetMap Nominatim which covers every country. Date format auto-detects to DD/MM/YYYY for India and Europe, MM/DD/YYYY for the USA, or ISO format. Temperature shows in Celsius or Fahrenheit based on your country." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I use GPS-stamped photos as legal or insurance evidence?",
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS-stamped photos are widely accepted as supporting evidence in insurance claims, construction site documentation, property disputes, and field reporting. For formal court proceedings, consult your legal advisor on the specific evidence requirements in your jurisdiction." }
+      },
+      {
+        "@type": "Question",
+        "name": "How does GPS Cam Stamp compare to GPS Map Camera app?",
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Map Camera is a popular Android app with over 100 million installs, but it requires app installation, is phone-only, and the free tier is heavily interrupted by ads. GPS Cam Stamp is web-based, works on desktop and mobile without installation, is completely free with no forced ads, and adds features like map thumbnail, weather, batch upload, and three stamp templates." }
+      }
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SpeakableSpecification",
+    "cssSelector": [".hero-text h1", ".section-header h2", ".faq-q"]
   }
+  ]
   </script>
 
   <link rel="stylesheet" href="style.css" />
@@ -505,6 +592,30 @@
           Can I use stamped photos as legal or official evidence? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
         <div class="faq-a">GPS-stamped photos are widely used as supporting evidence in insurance claims, construction disputes, and field reporting. For formal court proceedings, consult your legal advisor on specific evidence requirements in your jurisdiction.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          What information can I add to a photo stamp? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">Up to 8 fields: street address, GPS coordinates (decimal or DMS format), altitude, date &amp; time, GPS accuracy radius, compass heading, weather with temperature (°C or °F), and a custom text note. A map thumbnail showing your exact location on OpenStreetMap can also be added.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          How does GPS Cam Stamp compare to GPS Map Camera app? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">GPS Map Camera has 100M+ installs but requires app installation, is phone-only, and the free tier is heavily interrupted by ads. GPS Cam Stamp is web-based, works on desktop and mobile without any install, is completely free, and adds features like map thumbnail, weather, batch upload, and 3 stamp templates.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Can I stamp multiple photos at once? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">Yes. Use the Upload Photo tab and select multiple photos at once. GPS Cam Stamp will apply the same stamp settings to all photos and download each one automatically. Useful for construction sites, deliveries, or field surveys where you need to stamp a batch of photos quickly.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-hidden="true">
+          What is the best free GPS camera app alternative for desktop? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">GPS Cam Stamp is the only free GPS photo stamping tool that works directly in a desktop browser. All other GPS camera tools are Android or iPhone apps. Simply open gpscamstamp.com in Chrome or Firefox on your Windows PC or Mac — no install needed.</div>
       </div>
     </div>
   </div>
