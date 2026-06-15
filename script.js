@@ -15,6 +15,9 @@ let camStream      = null;
 let facingMode     = 'environment';
 let addressCache   = {};     // lat,lng → address to avoid repeat calls
 let batchImages    = [];     // [{img, filename}] for batch mode
+let mapTileImg  = null;   // OSM tile Image for map thumbnail
+let mapTilePin  = null;   // {px, py} pin pixel position within 256×256 tile
+let weatherData = null;   // {temp, unit, condition, icon}
 
 // ── DOM refs (resolved after DOMContentLoaded) ───────────
 let gpsBar, gpsStatus, camVideo, stampCanvas, previewWrap;
@@ -59,6 +62,8 @@ function onGPSSuccess(pos) {
   const lng = gpsData.lng.toFixed(5);
   setGPSStatus('found', `📍 ${lat}, ${lng}`);
   fetchAddress(gpsData.lat, gpsData.lng);
+  fetchMapTile(gpsData.lat, gpsData.lng);
+  fetchWeather(gpsData.lat, gpsData.lng);
 }
 
 function onGPSError(err) {
@@ -100,6 +105,62 @@ async function fetchAddress(lat, lng) {
     if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
   } catch (_) {
     // Silently fail — lat/lng will still show on stamp
+  }
+}
+
+// ── Map Tile (OpenStreetMap — free, attribution required) ──
+const WMO_MAP = {
+  0: ['☀', 'Clear'], 1: ['🌤', 'Mostly Clear'], 2: ['⛅', 'Partly Cloudy'], 3: ['☁', 'Overcast'],
+  45: ['🌫', 'Fog'], 48: ['🌫', 'Icy Fog'],
+  51: ['🌦', 'Light Drizzle'], 53: ['🌦', 'Drizzle'], 55: ['🌧', 'Heavy Drizzle'],
+  61: ['🌧', 'Light Rain'], 63: ['🌧', 'Rain'], 65: ['🌧', 'Heavy Rain'],
+  71: ['🌨', 'Light Snow'], 73: ['🌨', 'Snow'], 75: ['❄', 'Heavy Snow'],
+  80: ['🌦', 'Showers'], 81: ['🌧', 'Heavy Showers'], 82: ['⛈', 'Violent Showers'],
+  95: ['⛈', 'Thunderstorm'], 96: ['⛈', 'Hail Storm'], 99: ['⛈', 'Hail Storm']
+};
+
+function latLngToTilePixel(lat, lng, zoom) {
+  const n    = Math.pow(2, zoom);
+  const tx   = Math.floor((lng + 180) / 360 * n);
+  const latR = lat * Math.PI / 180;
+  const ty   = Math.floor((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n);
+  const xFrac = (lng + 180) / 360 * n - tx;
+  const yFrac = (1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n - ty;
+  return { tx, ty, px: Math.round(xFrac * 256), py: Math.round(yFrac * 256) };
+}
+
+async function fetchMapTile(lat, lng) {
+  const zoom = 14;
+  const { tx, ty, px, py } = latLngToTilePixel(lat, lng, zoom);
+  mapTilePin = { px, py };
+  try {
+    const res     = await fetch(`https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`);
+    const blob    = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const img     = new Image();
+    img.onload    = () => {
+      mapTileImg = img;
+      if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
+    };
+    img.src = blobUrl;
+  } catch (_) {
+    // Map tile unavailable (offline/CORS) — stamp works without thumbnail
+  }
+}
+
+// ── Weather (open-meteo.com — free, no API key) ───────────
+async function fetchWeather(lat, lng) {
+  try {
+    const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current_weather=true&timezone=auto`;
+    const res  = await fetch(url);
+    const json = await res.json();
+    const cw   = json.current_weather;
+    if (!cw) return;
+    const [icon, condition] = WMO_MAP[cw.weathercode] || ['🌡', 'Unknown'];
+    weatherData = { temp: Math.round(cw.temperature), unit: '°C', condition, icon };
+    if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
+  } catch (_) {
+    // Weather unavailable — stamp works without weather data
   }
 }
 
@@ -207,8 +268,9 @@ function drawStampedImage(img, targetCanvas) {
 }
 
 function drawStamp(ctx, W, H) {
-  const lines = buildStampLines();
-  if (!lines.length) return;
+  const lines   = buildStampLines();
+  const showMap = chk('tog-map') && mapTileImg && mapTilePin;
+  if (!lines.length && !showMap) return;
 
   const tmpl = currentTemplate;
   const baseSize = Math.max(11, Math.round(W / 52));
@@ -217,50 +279,45 @@ function drawStamp(ctx, W, H) {
   const padY     = Math.round(H * 0.018);
 
   if (tmpl === 'minimal') {
-    drawMinimal(ctx, lines, W, H, baseSize, lineH, padX, padY);
+    drawMinimal(ctx, lines, W, H, baseSize, lineH, padX, padY, showMap);
   } else if (tmpl === 'pro') {
-    drawPro(ctx, lines, W, H, baseSize, lineH, padX, padY);
+    drawPro(ctx, lines, W, H, baseSize, lineH, padX, padY, showMap);
   } else {
-    drawClassic(ctx, lines, W, H, baseSize, lineH, padX, padY);
+    drawClassic(ctx, lines, W, H, baseSize, lineH, padX, padY, showMap);
   }
 }
 
-// Classic — dark bar at bottom
-function drawClassic(ctx, lines, W, H, sz, lH, pX, pY) {
-  const barH = lines.length * lH + pY * 2;
-  // Dark translucent bar
+// Classic — dark bar at bottom, map thumbnail on right when enabled
+function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
+  const barH = Math.max(lines.length * lH + pY * 2, showMap ? Math.round(sz * 4) : 0);
+  const mapSz = showMap ? barH : 0;
   ctx.fillStyle = 'rgba(0,0,0,0.72)';
   ctx.fillRect(0, H - barH, W, barH);
-  // Accent line at top of bar
   ctx.fillStyle = '#0ea5e9';
   ctx.fillRect(0, H - barH, W, 2);
-  // Text
+  if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, mapTileImg, mapTilePin);
   ctx.font = `bold ${sz}px Courier New, monospace`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
-    // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
     ctx.fillText(line, pX + 1, H - barH + pY + i * lH + 1);
-    // Text
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#f1f5f9';
     ctx.fillText(line, pX, H - barH + pY + i * lH);
   });
-  // Watermark
   ctx.font = `${Math.round(sz * 0.75)}px sans-serif`;
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.textAlign = 'right';
-  ctx.fillText('gpscamstamp.com', W - pX, H - barH + pY);
+  ctx.fillText('gpscamstamp.com', W - mapSz - pX, H - barH + pY);
   ctx.textAlign = 'left';
 }
 
-// Minimal — small tag in bottom-left corner
-function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY) {
+// Minimal — text tag in bottom-left, map thumbnail in bottom-right
+function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   const minSz = Math.max(10, Math.round(sz * 0.85));
   const minLH = Math.round(minSz * 1.5);
-  const tagW  = Math.round(W * 0.52);
-  const tagH  = lines.length * minLH + pY * 1.5;
+  const tagW  = Math.round(W * (showMap ? 0.48 : 0.52));
+  const tagH  = Math.max(lines.length * minLH + pY * 1.5, showMap ? Math.round(sz * 4) : 0);
   const x = pX, y = H - tagH - pY;
-  // Rounded rect
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.fill();
@@ -268,31 +325,30 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY) {
   ctx.lineWidth = 1.2;
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.stroke();
-  // Text
   ctx.font = `${minSz}px Courier New, monospace`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#cbd5e1';
     ctx.fillText(line, x + pX * 0.6, y + pY * 0.75 + i * minLH);
   });
+  if (showMap) {
+    const mapSz = tagH;
+    drawMapThumb(ctx, W - mapSz - pX, y, mapSz, mapTileImg, mapTilePin);
+  }
 }
 
-// Pro — side panel on right with branded header
-function drawPro(ctx, lines, W, H, sz, lH, pX, pY) {
+// Pro — side panel on right with branded header and map thumbnail at bottom
+function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   const panelW = Math.round(W * 0.38);
-  const panelH = H;
-  // Side panel
+  const mapSz  = showMap ? Math.min(panelW - pX * 2, Math.round(W * 0.28)) : 0;
   ctx.fillStyle = 'rgba(8,14,26,0.85)';
-  ctx.fillRect(W - panelW, 0, panelW, panelH);
-  // Header bar
+  ctx.fillRect(W - panelW, 0, panelW, H);
   ctx.fillStyle = '#0ea5e9';
   ctx.fillRect(W - panelW, 0, panelW, Math.round(sz * 2.2));
-  // Brand text in header
   ctx.font = `bold ${Math.round(sz * 0.9)}px sans-serif`;
   ctx.fillStyle = '#fff';
   ctx.textBaseline = 'middle';
   ctx.fillText('📍 GPS CAM STAMP', W - panelW + pX, sz * 1.1);
-  // Lines
   ctx.font = `${sz}px Courier New, monospace`;
   ctx.textBaseline = 'top';
   const startY = Math.round(sz * 2.5);
@@ -300,9 +356,13 @@ function drawPro(ctx, lines, W, H, sz, lH, pX, pY) {
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#94a3b8';
     ctx.fillText(line, W - panelW + pX, startY + i * lH * 1.2);
   });
-  // Divider
   ctx.fillStyle = 'rgba(14,165,233,0.2)';
   ctx.fillRect(W - panelW, Math.round(sz * 2.2), panelW, 1);
+  if (showMap) {
+    const mapX = W - panelW + Math.round((panelW - mapSz) / 2);
+    const mapY = H - mapSz - pY;
+    drawMapThumb(ctx, mapX, mapY, mapSz, mapTileImg, mapTilePin);
+  }
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -317,6 +377,38 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+function drawMapThumb(ctx, x, y, size, tileImg, pin) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, size, size);
+  ctx.clip();
+  // Scale OSM tile (256px source) centered on pin location
+  const scale = size / 256;
+  ctx.drawImage(tileImg, x + size / 2 - pin.px * scale, y + size / 2 - pin.py * scale, 256 * scale, 256 * scale);
+  // Red pin marker at center
+  const r = Math.max(4, Math.round(size * 0.07));
+  ctx.beginPath();
+  ctx.arc(x + size / 2, y + size / 2, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#ef4444';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = Math.max(1, size * 0.025);
+  ctx.stroke();
+  ctx.restore();
+  // Border
+  ctx.strokeStyle = 'rgba(14,165,233,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, y, size, size);
+  // OSM attribution (required by OpenStreetMap tile usage policy)
+  ctx.font = `${Math.max(7, Math.round(size * 0.09))}px sans-serif`;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('© OpenStreetMap', x + size - 2, y + size - 1);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
 
 // Build array of stamp text lines based on toggles + GPS data
@@ -349,6 +441,10 @@ function buildStampLines() {
 
   if (chk('tog-compass') && gpsData && gpsData.heading != null) {
     lines.push(`🧭 ${headingLabel(gpsData.heading)} (${Math.round(gpsData.heading)}°)`);
+  }
+
+  if (chk('tog-weather') && weatherData) {
+    lines.push(`${weatherData.icon} ${weatherData.temp}${weatherData.unit}  ${weatherData.condition}`);
   }
 
   const note = document.getElementById('customNote')?.value?.trim();
