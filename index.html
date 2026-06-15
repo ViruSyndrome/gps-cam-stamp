@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPS Cam Stamp — Free GPS Photo Stamper Online | Add Location to Photos</title>
+  <meta name="description" content="Free online GPS camera tool. Take a photo or upload one and instantly stamp it with GPS coordinates, address, altitude, date and time. No app install needed. Works on any device." />
+  <meta name="keywords" content="gps camera online free, add gps to photo, photo location stamp, geotag photo online, gps timestamp photo, add coordinates to photo" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://www.gpscamstamp.com/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="GPS Cam Stamp — Free GPS Photo Stamper Online" />
+  <meta property="og:description" content="Stamp your photos with GPS location, address, altitude and timestamp — free, instant, no app needed." />
+  <meta property="og:url" content="https://www.gpscamstamp.com/" />
+  <meta property="og:image" content="https://www.gpscamstamp.com/assets/og-image.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GPS Cam Stamp — Free GPS Photo Stamper" />
+  <meta name="twitter:description" content="Add GPS coordinates, address and timestamp to photos. Free, no install, works on desktop and mobile." />
+
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "GPS Cam Stamp",
+    "url": "https://www.gpscamstamp.com/",
+    "description": "Free online tool to stamp photos with GPS coordinates, address, altitude, and timestamp. No app install required.",
+    "applicationCategory": "PhotographyApplication",
+    "operatingSystem": "Any",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="assets/favicon.png" type="image/png" />
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" role="navigation" aria-label="Main navigation">
+  <a href="/" class="nav-brand" aria-label="GPS Cam Stamp home">
+    <div class="nav-logo" aria-hidden="true">📍</div>
+    <span class="nav-name">GPS<span>Cam</span>Stamp</span>
+  </a>
+  <ul class="nav-links" role="list">
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#use-cases">Use Cases</a></li>
+    <li><a href="guides/index.html">Guides</a></li>
+    <li><a href="#tool" class="nav-cta">Try Free →</a></li>
+  </ul>
+  <button class="nav-mobile-btn" aria-label="Open menu" onclick="document.querySelector('.nav-links').classList.toggle('nav-open')">☰</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-text">
+    <div class="hero-badge" aria-label="Free tool badge">
+      <span>✦</span> 100% Free · No App Install · Works Instantly
+    </div>
+    <h1 id="hero-heading">
+      Stamp Your Photos With<br><span>GPS Location & Time</span>
+    </h1>
+    <p class="hero-sub">
+      Take a photo or upload one — instantly stamp it with GPS coordinates, street address, altitude, compass direction, date and time. Used by field workers, real estate agents, travellers and more.
+    </p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-val">0s</div>
+        <div class="hero-stat-lbl">Setup time</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">100%</div>
+        <div class="hero-stat-lbl">Free forever</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">0</div>
+        <div class="hero-stat-lbl">Ads on tool</div>
+      </div>
+    </div>
+    <div class="hero-trust">
+      <span class="trust-item">Works on desktop &amp; mobile</span>
+      <span class="trust-item">No sign-up required</span>
+      <span class="trust-item">Photos stay on your device</span>
+      <span class="trust-item">No subscription</span>
+    </div>
+  </div>
+
+  <!-- TOOL -->
+  <div class="tool-card" id="tool">
+    <div class="tool-tabs" role="tablist">
+      <button class="tab-btn active" role="tab" aria-selected="true" id="tab-camera" aria-controls="panel-camera" onclick="switchTab('camera')">📷 Camera</button>
+      <button class="tab-btn" role="tab" aria-selected="false" id="tab-upload" aria-controls="panel-upload" onclick="switchTab('upload')">🖼 Upload Photo</button>
+    </div>
+
+    <!-- GPS status bar -->
+    <div class="gps-bar" id="gpsBar" role="status" aria-live="polite">
+      <div class="gps-dot" aria-hidden="true"></div>
+      <span id="gpsStatus">Waiting for location permission…</span>
+    </div>
+
+    <!-- Camera panel -->
+    <div class="panel" id="panel-camera" role="tabpanel" aria-labelledby="tab-camera">
+      <div class="video-wrap">
+        <video id="camVideo" class="cam-video" autoplay playsinline muted></video>
+        <div class="cam-overlay" aria-hidden="true">
+          <div class="cam-grid"></div>
+        </div>
+      </div>
+      <div class="cam-controls">
+        <button class="btn-switch" id="btnSwitch" onclick="switchCamera()" title="Switch camera" aria-label="Switch front/back camera">⇄</button>
+        <button class="btn-capture" id="btnCapture" onclick="capturePhoto()">📷 Capture &amp; Stamp</button>
+      </div>
+    </div>
+
+    <!-- Upload panel -->
+    <div class="panel hidden" id="panel-upload" role="tabpanel" aria-labelledby="tab-upload">
+      <label class="drop-zone" id="dropZone" for="fileInput">
+        <input type="file" id="fileInput" accept="image/*" multiple aria-label="Upload photos" />
+        <div class="drop-inner">
+          <div class="drop-icon" aria-hidden="true">📂</div>
+          <p><strong>Click to upload</strong> or drag &amp; drop</p>
+          <p>JPG, PNG, WEBP — up to 20MB each</p>
+          <p class="drop-hint">Multiple photos supported for batch stamping</p>
+        </div>
+      </label>
+    </div>
+
+    <!-- Preview & controls (shared) -->
+    <div class="preview-wrap hidden" id="previewWrap">
+      <div class="canvas-container">
+        <canvas id="stampCanvas" aria-label="Stamped photo preview"></canvas>
+      </div>
+
+      <!-- Template selector -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Template</div>
+        <div class="template-btns" role="group" aria-label="Stamp template">
+          <button class="tmpl-btn active" onclick="setTemplate('classic')" aria-pressed="true">Classic</button>
+          <button class="tmpl-btn" onclick="setTemplate('minimal')" aria-pressed="false">Minimal</button>
+          <button class="tmpl-btn" onclick="setTemplate('pro')" aria-pressed="false">Pro</button>
+        </div>
+      </div>
+
+      <!-- Stamp fields toggles -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Stamp Fields</div>
+        <div class="toggles-grid" role="group" aria-label="Stamp fields">
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-address" checked onchange="redrawStamp()" aria-label="Show address" />
+            <div class="tog-dot" aria-hidden="true"></div> Address
+          </label>
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-coords" checked onchange="redrawStamp()" aria-label="Show coordinates" />
+            <div class="tog-dot" aria-hidden="true"></div> Lat / Long
+          </label>
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-altitude" checked onchange="redrawStamp()" aria-label="Show altitude" />
+            <div class="tog-dot" aria-hidden="true"></div> Altitude
+          </label>
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-datetime" checked onchange="redrawStamp()" aria-label="Show date and time" />
+            <div class="tog-dot" aria-hidden="true"></div> Date &amp; Time
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-accuracy" onchange="redrawStamp()" aria-label="Show GPS accuracy" />
+            <div class="tog-dot" aria-hidden="true"></div> Accuracy
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-compass" onchange="redrawStamp()" aria-label="Show compass" />
+            <div class="tog-dot" aria-hidden="true"></div> Compass
+          </label>
+        </div>
+      </div>
+
+      <!-- Custom note -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Custom Note (optional)</div>
+        <input type="text" class="custom-input" id="customNote" placeholder="e.g. Site Inspection — Work Complete" maxlength="80" oninput="redrawStamp()" aria-label="Custom note for stamp" />
+      </div>
+
+      <!-- Actions -->
+      <div class="action-btns">
+        <button class="btn-primary" onclick="downloadPhoto()" aria-label="Download stamped photo">⬇ Download Stamped Photo</button>
+        <button class="btn-secondary" onclick="resetTool()" aria-label="Take a new photo">↩ New</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works" aria-labelledby="hiw-heading">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-tag">Simple</div>
+      <h2 id="hiw-heading">Stamp a Photo in 3 Steps</h2>
+      <p>No app to download. No account to create. Works right in your browser.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num" aria-hidden="true">1</div>
+        <h3>Allow Location</h3>
+        <p>Click "Allow" when your browser asks for location. GPS coordinates are read directly — nothing is sent to any server.</p>
+      </div>
+      <div class="step">
+        <div class="step-num" aria-hidden="true">2</div>
+        <h3>Capture or Upload</h3>
+        <p>Use your camera live, or upload any existing photo from your device — including photos from your gallery.</p>
+      </div>
+      <div class="step">
+        <div class="step-num" aria-hidden="true">3</div>
+        <h3>Download &amp; Share</h3>
+        <p>Choose your template, toggle the fields you want, and download the stamped photo. Ready to share instantly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section use-cases-bg" aria-labelledby="feat-heading">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-tag">Features</div>
+      <h2 id="feat-heading">Everything You Need. Nothing You Don't.</h2>
+      <p>All features are free. No subscription. No ad-wall blocking the camera.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📍</div>
+        <h3>GPS Coordinates</h3>
+        <p>Latitude, longitude and altitude auto-stamped at the moment of capture. Decimal and DMS formats supported.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🏠</div>
+        <h3>Street Address</h3>
+        <p>Full reverse-geocoded street address overlaid on your photo. No API key needed — uses OpenStreetMap.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🕐</div>
+        <h3>Date &amp; Time Stamp</h3>
+        <p>Tamper-visible timestamp in your chosen format (DD/MM/YYYY, MM-DD-YYYY, 12hr or 24hr).</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📤</div>
+        <h3>Upload Any Photo</h3>
+        <p>Already have a photo taken elsewhere? Upload it, enter the location manually, and stamp it in seconds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🗂</div>
+        <h3>Batch Stamping</h3>
+        <p>Upload multiple photos at once and stamp them all with the same GPS data and template. Perfect for site reports.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🎨</div>
+        <h3>3 Templates</h3>
+        <p>Classic (full info bar), Minimal (clean corner tag), Pro (branded dark panel with map thumbnail).</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🖥</div>
+        <h3>Desktop + Mobile</h3>
+        <p>The only free GPS stamp tool that works equally well on a laptop, tablet, iPhone and Android.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🔒</div>
+        <h3>100% Private</h3>
+        <p>Your photos never leave your device. All processing happens in your browser. Zero data collected.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📝</div>
+        <h3>Custom Note</h3>
+        <p>Add a custom label like "Site Inspection", "Delivery Complete" or "Check-In" directly on the stamp.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON TABLE -->
+<section class="section" aria-labelledby="cmp-heading">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-tag">vs. App Stores</div>
+      <h2 id="cmp-heading">Why GPS Cam Stamp Beats Every App</h2>
+      <p>GPS camera apps charge $60/month and bury features behind ads. We don't.</p>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="compare-table" role="table" aria-label="Comparison with GPS camera apps">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="us">GPS Cam Stamp</th>
+            <th>GPS Map Camera App</th>
+            <th>GPS Photo App</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Price</td>
+            <td class="yes us-col">Free — always</td>
+            <td>Free tier + paid</td>
+            <td class="no">$60 / month</td>
+          </tr>
+          <tr>
+            <td>App install required</td>
+            <td class="yes us-col">No — browser only</td>
+            <td class="no">Yes</td>
+            <td class="no">Yes</td>
+          </tr>
+          <tr>
+            <td>Works on desktop / laptop</td>
+            <td class="yes us-col">Yes</td>
+            <td class="no">No</td>
+            <td class="no">No</td>
+          </tr>
+          <tr>
+            <td>Ads blocking the camera</td>
+            <td class="yes us-col">None</td>
+            <td class="no">Heavy ads</td>
+            <td class="no">Heavy ads</td>
+          </tr>
+          <tr>
+            <td>Upload existing photos</td>
+            <td class="yes us-col">Yes</td>
+            <td class="no">Limited</td>
+            <td class="no">Paid only</td>
+          </tr>
+          <tr>
+            <td>Privacy — photos stay local</td>
+            <td class="yes us-col">100% local</td>
+            <td>Unclear</td>
+            <td class="no">Shares device data</td>
+          </tr>
+          <tr>
+            <td>Batch stamping</td>
+            <td class="yes us-col">Yes — free</td>
+            <td class="no">Paid only</td>
+            <td class="no">Not available</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section class="section use-cases-bg" id="use-cases" aria-labelledby="uc-heading">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-tag">Who Uses It</div>
+      <h2 id="uc-heading">Built for Real-World Proof</h2>
+      <p>From insurance adjusters to travel bloggers — anyone who needs location-verified photos.</p>
+    </div>
+    <div class="use-cases-grid">
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">🏗</div>
+        <h3>Construction &amp; Site Managers</h3>
+        <p>Document site progress with GPS-stamped photos. Attach "Work Complete" tags for daily reports. No separate reporting software needed.</p>
+        <a href="guides/gps-photo-construction-site.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">🏠</div>
+        <h3>Real Estate Agents</h3>
+        <p>Stamp property inspection photos with exact address and date. Build client trust with verified, tamper-evident images for MLS listings.</p>
+        <a href="guides/gps-photo-real-estate.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">🛡</div>
+        <h3>Insurance Adjusters</h3>
+        <p>Capture location-verified damage photos with GPS coordinates and timestamps. Tamper-evident proof for claims documentation.</p>
+        <a href="guides/gps-photo-insurance-claim.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">📦</div>
+        <h3>Delivery &amp; Logistics</h3>
+        <p>Proof-of-delivery photos stamped with address, time and "Delivered at" note. Resolve customer disputes instantly.</p>
+        <a href="guides/gps-photo-delivery-proof.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">🌍</div>
+        <h3>NGO &amp; Field Workers</h3>
+        <p>Prove field presence for grant reporting. Photos with GPS coordinates, altitude and address hold up in audits and donor reports.</p>
+        <a href="guides/gps-photo-ngo-field-work.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">⚖</div>
+        <h3>Legal &amp; Dispute Evidence</h3>
+        <p>Location-verified photos for court documentation. GPS coordinates and timestamps provide strong evidence in property and boundary disputes.</p>
+        <a href="guides/gps-photo-legal-evidence.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">✈</div>
+        <h3>Travellers &amp; Bloggers</h3>
+        <p>Auto-stamp your travel photos with the exact place name, coordinates and time. Share memories that tell the full story of where you were.</p>
+        <a href="guides/gps-photo-travel-bloggers.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">💼</div>
+        <h3>Remote Workers &amp; Freelancers</h3>
+        <p>Prove on-site presence to clients. A GPS-stamped photo is faster and more convincing than a written check-in report.</p>
+        <a href="guides/gps-photo-remote-workers.html" class="use-case-link">Learn more →</a>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon" aria-hidden="true">🖥</div>
+        <h3>Laptop Users — No Phone Needed</h3>
+        <p>Every GPS camera app is phone-only. GPS Cam Stamp is the only tool that works on your laptop browser — perfect for desk-based documentation work.</p>
+        <a href="guides/add-gps-to-photo-desktop.html" class="use-case-link">Learn more →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" aria-labelledby="faq-heading">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-tag">FAQ</div>
+      <h2 id="faq-heading">Frequently Asked Questions</h2>
+    </div>
+    <div class="faq-list" role="list">
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Is GPS Cam Stamp really free? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">Yes, completely free. All features — camera, upload, batch stamping, all templates, all stamp fields — are free with no subscription, no trial period and no credit card.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Do my photos get uploaded to a server? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">No. Your photos never leave your device. All stamping happens entirely in your browser using the HTML5 Canvas API. We have no server that receives or stores images.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Can I use this on my laptop or desktop? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">Yes — and that's one of our biggest advantages. Every GPS camera app in the App Store and Google Play is phone-only. GPS Cam Stamp works on Chrome, Firefox, Edge and Safari on any device.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          How accurate is the GPS location? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">Accuracy depends on your device and environment. Outdoors with a clear sky: typically 3–10 metres. Indoors or with weak signal: 20–100 metres. The stamp shows the accuracy radius so you always know how precise it is.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Can I stamp photos I already took earlier? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">Yes. Use the "Upload Photo" tab to upload any photo from your gallery. You can use your current GPS location or enter coordinates manually. This works for stamping photos taken anywhere.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Does this work in India, USA, UK and other countries? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">Yes. GPS Cam Stamp works globally. The reverse geocoding (address lookup) uses OpenStreetMap which covers every country. Date formats can be set to match your regional standard.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          Can I use stamped photos as legal or official evidence? <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a">GPS-stamped photos are widely used as supporting evidence in insurance claims, construction disputes, and field reporting. For formal court proceedings, consult your legal advisor on specific evidence requirements in your jurisdiction.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<div class="network-footer">
+  <div class="network-inner">
+    <div class="network-label">Part of the Free Tools Network</div>
+    <div class="network-sites">
+      <a href="https://www.getatsready.com" class="network-site" rel="noopener">🎯 GetATSReady</a>
+      <a href="https://www.pregnancyweektracker.com" class="network-site" rel="noopener">🤰 Pregnancy Tracker</a>
+      <a href="https://www.globackvisamath.com" class="network-site" rel="noopener">🌐 GlobalVisaMath</a>
+      <a href="https://www.getniftyready.com" class="network-site" rel="noopener">📈 Nifty Tracker</a>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="footer-copy">© 2026 GPS Cam Stamp. Free GPS photo stamping tool.</p>
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="about.html">About</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="contact.html">Contact</a>
+      <a href="guides/index.html">Guides</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
