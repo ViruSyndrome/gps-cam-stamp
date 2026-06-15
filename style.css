@@ -41,6 +41,7 @@ img { max-width: 100%; display: block; }
 .nav {
   position: sticky; top: 0; z-index: 100;
   background: rgba(8,14,26,0.92);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   padding: 0 1.5rem;
@@ -543,6 +544,23 @@ img { max-width: 100%; display: block; }
   padding: 1rem 1.25rem; margin: 1.25rem 0;
 }
 .info-box p { margin-bottom: 0 !important; }
+
+/* ===== CONTRIBUTE ===== */
+.contribute-section {
+  max-width: 680px; margin: 3rem auto 2rem; padding: 2.5rem 2rem;
+  background: var(--card); border-radius: var(--radius);
+  border: 1px solid var(--border); text-align: center;
+}
+.contribute-section h2 { font-size: 1.4rem; margin-bottom: 0.75rem; color: var(--text); }
+.contribute-section p { color: var(--text-muted); margin-bottom: 1.5rem; }
+.btn-support {
+  display: inline-block; padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff; font-weight: 700; border-radius: 8px;
+  text-decoration: none; font-size: 1rem;
+  transition: opacity 0.2s;
+}
+.btn-support:hover { opacity: 0.88; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
