@@ -91,7 +91,7 @@ async function fetchAddress(lat, lng) {
   if (addressCache[key]) { addressData = addressCache[key]; return; }
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`;
-    const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'GPSCamStamp/1.0 (https://www.gpscamstamp.com; hello@gpscamstamp.com)' } });
     const json = await res.json();
     addressData = {
       display_name: json.display_name || '',
