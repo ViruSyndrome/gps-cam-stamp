@@ -575,7 +575,15 @@ img { max-width: 100%; display: block; }
   .hero h1 { font-size: 1.7rem; }
   .features-grid { grid-template-columns: 1fr; }
   .use-cases-grid { grid-template-columns: 1fr; }
-  .nav-links { display: none; }
+  .nav-links {
+    display: none;
+    position: absolute; top: 60px; left: 0; width: 100%;
+    background: rgba(8,14,26,0.98); backdrop-filter: blur(12px);
+    flex-direction: column; padding: 1.5rem; gap: 1rem;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .nav-links.nav-open { display: flex; }
   .nav-mobile-btn { display: block; }
   .toggles-grid { grid-template-columns: 1fr; }
   .action-btns { grid-template-columns: 1fr; }
