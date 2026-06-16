@@ -1,0 +1,33 @@
+{
+  "name": "GPS Cam Stamp",
+  "short_name": "GPSCamStamp",
+  "description": "Free GPS photo stamper — add location, address and timestamp to any photo. Works on any device, no app install needed.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080e1a",
+  "theme_color": "#0ea5e9",
+  "orientation": "any",
+  "categories": ["photo", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "GPS Cam Stamp — stamp photos with GPS location"
+    }
+  ]
+}

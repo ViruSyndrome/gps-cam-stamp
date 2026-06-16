@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GPS Cam Stamp — Free GPS Photo Stamper Online | Add Location to Photos</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0ea5e9" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GPSCamStamp" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
   <meta name="description" content="Free online GPS camera tool. Take a photo or upload one and instantly stamp it with GPS coordinates, address, altitude, date and time. No app install needed. Works on any device." />
   <meta name="keywords" content="gps camera online free, add gps to photo, photo location stamp, geotag photo online, gps timestamp photo, add coordinates to photo" />
   <meta name="google-site-verification" content="5n1Q0mC0EdG7YY7871Upwdxh0r0H0lhrV4_dhoavwx8" />
@@ -16,13 +24,13 @@
   <meta property="og:title" content="GPS Cam Stamp — Free GPS Photo Stamper Online" />
   <meta property="og:description" content="Stamp your photos with GPS location, address, altitude and timestamp — free, instant, no app needed." />
   <meta property="og:url" content="https://www.gpscamstamp.com/" />
-  <meta property="og:image" content="https://www.gpscamstamp.com/assets/og-image.png" />
+  <meta property="og:image" content="https://www.gpscamstamp.com/assets/og-image.webp" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="GPS Cam Stamp — Free GPS Photo Stamper" />
   <meta name="twitter:description" content="Add GPS coordinates, address and timestamp to photos. Free, no install, works on desktop and mobile." />
-  <meta name="twitter:image" content="https://www.gpscamstamp.com/assets/og-image.png" />
+  <meta name="twitter:image" content="https://www.gpscamstamp.com/assets/og-image.webp" />
   <meta name="twitter:site" content="@gpscamstamp" />
 
   <!-- JSON-LD -->
@@ -654,5 +662,10 @@
 </footer>
 
 <script src="script.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  }
+</script>
 </body>
 </html>

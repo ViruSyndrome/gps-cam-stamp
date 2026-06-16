@@ -282,6 +282,14 @@ function handleFiles(files) {
   if (!imageFiles.length) return;
   batchImages = [];
   let loaded = 0;
+
+  // For single-file upload, try to read EXIF GPS + datetime first
+  if (imageFiles.length === 1) {
+    readExifFromFile(imageFiles[0]).then(exif => {
+      if (exif) applyExifData(exif);
+    });
+  }
+
   imageFiles.forEach(file => {
     const reader = new FileReader();
     reader.onload = e => {
@@ -298,6 +306,151 @@ function handleFiles(files) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+// ── EXIF reader (no dependency — native DataView) ─────────
+function readExifFromFile(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(parseExifGPS(e.target.result));
+    reader.onerror = () => resolve(null);
+    // Only need the first 128KB to find EXIF in most JPEGs
+    reader.readAsArrayBuffer(file.slice(0, 131072));
+  });
+}
+
+function parseExifGPS(buffer) {
+  const view = new DataView(buffer);
+  // Must start with JPEG SOI marker FF D8
+  if (view.getUint16(0) !== 0xFFD8) return null;
+  let offset = 2;
+  while (offset < view.byteLength - 2) {
+    const marker = view.getUint16(offset);
+    if (marker === 0xFFE1) { // APP1 = EXIF
+      return parseApp1(view, offset + 4);
+    }
+    if ((marker & 0xFF00) !== 0xFF00) break;
+    offset += 2 + view.getUint16(offset + 2);
+  }
+  return null;
+}
+
+function parseApp1(view, start) {
+  // Check for "Exif\0\0" header
+  const exifHeader = String.fromCharCode(
+    view.getUint8(start), view.getUint8(start+1),
+    view.getUint8(start+2), view.getUint8(start+3)
+  );
+  if (exifHeader !== 'Exif') return null;
+  const tiffStart = start + 6;
+  const littleEndian = view.getUint16(tiffStart) === 0x4949;
+  const readUint16 = o => view.getUint16(tiffStart + o, littleEndian);
+  const readUint32 = o => view.getUint32(tiffStart + o, littleEndian);
+
+  // IFD0 offset
+  const ifd0 = readUint32(4);
+  const ifd0Entries = readUint16(ifd0);
+  let gpsIFDOffset = null, subIFDOffset = null;
+
+  for (let i = 0; i < ifd0Entries; i++) {
+    const eOff = ifd0 + 2 + i * 12;
+    const tag = readUint16(eOff);
+    if (tag === 0x8825) gpsIFDOffset = readUint32(eOff + 8);  // GPS IFD
+    if (tag === 0x8769) subIFDOffset = readUint32(eOff + 8);  // Exif SubIFD
+  }
+
+  const result = {};
+
+  // Parse GPS IFD
+  if (gpsIFDOffset !== null) {
+    const gpsEntries = readUint16(gpsIFDOffset);
+    const gps = {};
+    for (let i = 0; i < gpsEntries; i++) {
+      const eOff = gpsIFDOffset + 2 + i * 12;
+      const tag  = readUint16(eOff);
+      const type = readUint16(eOff + 2);
+      const count = readUint32(eOff + 4);
+      const valOff = eOff + 8;
+      if (type === 5) { // RATIONAL
+        const dataOff = count > 1 || true ? readUint32(valOff) : valOff;
+        const readRat = (o) => {
+          const n = view.getUint32(tiffStart + o, littleEndian);
+          const d = view.getUint32(tiffStart + o + 4, littleEndian);
+          return d ? n / d : 0;
+        };
+        if (tag === 2) gps.lat = [readRat(dataOff), readRat(dataOff+8), readRat(dataOff+16)]; // GPSLatitude
+        if (tag === 4) gps.lng = [readRat(dataOff), readRat(dataOff+8), readRat(dataOff+16)]; // GPSLongitude
+        if (tag === 6) gps.alt = readRat(dataOff);                                              // GPSAltitude
+      }
+      if (type === 2) { // ASCII
+        const strOff = count <= 4 ? valOff : readUint32(valOff);
+        let str = '';
+        for (let c = 0; c < count - 1; c++) str += String.fromCharCode(view.getUint8(tiffStart + strOff + c));
+        if (tag === 1) gps.latRef = str;  // N/S
+        if (tag === 3) gps.lngRef = str;  // E/W
+        if (tag === 5) gps.altRef = view.getUint8(valOff); // 0=above, 1=below
+      }
+    }
+    if (gps.lat && gps.lng) {
+      const toDecimal = (dms) => dms[0] + dms[1]/60 + dms[2]/3600;
+      result.lat = toDecimal(gps.lat) * (gps.latRef === 'S' ? -1 : 1);
+      result.lng = toDecimal(gps.lng) * (gps.lngRef === 'W' ? -1 : 1);
+      if (gps.alt !== undefined) result.altitude = gps.alt * (gps.altRef === 1 ? -1 : 1);
+    }
+  }
+
+  // Parse Exif SubIFD for DateTimeOriginal (tag 0x9003)
+  if (subIFDOffset !== null) {
+    const subEntries = readUint16(subIFDOffset);
+    for (let i = 0; i < subEntries; i++) {
+      const eOff = subIFDOffset + 2 + i * 12;
+      const tag  = readUint16(eOff);
+      if (tag === 0x9003) { // DateTimeOriginal
+        const count = readUint32(eOff + 4);
+        const strOff = count <= 4 ? eOff + 8 : readUint32(eOff + 8);
+        let str = '';
+        for (let c = 0; c < count - 1; c++) str += String.fromCharCode(view.getUint8(tiffStart + strOff + c));
+        // Format: "YYYY:MM:DD HH:MM:SS"
+        const m = str.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+        if (m) result.datetime = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+        break;
+      }
+    }
+  }
+
+  return Object.keys(result).length ? result : null;
+}
+
+function applyExifData(exif) {
+  if (!exif.lat && !exif.datetime) return;
+
+  let notice = [];
+
+  if (exif.lat !== undefined && exif.lng !== undefined) {
+    // Override GPS data with photo's embedded coordinates
+    gpsData = {
+      lat: exif.lat, lng: exif.lng,
+      altitude: exif.altitude || gpsData?.altitude || null,
+      accuracy: null, heading: null, speed: null
+    };
+    notice.push('GPS from photo EXIF');
+    // Fetch address + map + weather for the photo's location
+    fetchAddress(exif.lat, exif.lng);
+    fetchMapTile(exif.lat, exif.lng);
+    fetchWeather(exif.lat, exif.lng);
+  }
+
+  if (exif.datetime) {
+    // Override the timestamp with the photo's original capture time
+    gpsData = gpsData || {};
+    gpsData._exifDate = exif.datetime;
+    notice.push('date from photo EXIF');
+  }
+
+  if (notice.length) {
+    setGPSStatus('found', `📷 ${notice.join(' + ')} — location updated`);
+    redrawStamp();
+  }
 }
 
 // ── Preview & Stamp ───────────────────────────────────────
@@ -468,7 +621,8 @@ function drawMapThumb(ctx, x, y, size, tileImg, pin) {
 // Build array of stamp text lines based on toggles + GPS data
 function buildStampLines() {
   const lines = [];
-  const now = new Date();
+  // Use EXIF original capture time if available, otherwise current time
+  const now = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
 
   if (chk('tog-address') && addressData) {
     const addr = [addressData.road, addressData.city, addressData.country].filter(Boolean).join(', ');
