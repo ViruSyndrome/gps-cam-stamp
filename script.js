@@ -105,7 +105,7 @@ async function fetchAddress(lat, lng) {
     refineTempUnit(addressData.country);
     // Update GPS bar with address
     if (addressData.road) {
-      setGPSStatus('found', `📍 ${addressData.road}${addressData.city ? ', ' + addressData.city : ''}`);
+      setGPSStatus('found', `📍 ${[addressData.road, addressData.city, addressData.state].filter(Boolean).join(', ')}`);
     }
     // Refresh preview if already showing
     if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
@@ -480,7 +480,7 @@ function drawStamp(ctx, W, H) {
   if (!lines.length && !showMap) return;
 
   const tmpl = currentTemplate;
-  const baseSize = Math.max(11, Math.round(W / 52));
+  const baseSize = Math.max(16, Math.round(W / 35));
   const lineH    = Math.round(baseSize * 1.55);
   const padX     = Math.round(W * 0.022);
   const padY     = Math.round(H * 0.018);
@@ -625,7 +625,7 @@ function buildStampLines() {
   const now = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
 
   if (chk('tog-address') && addressData) {
-    const addr = [addressData.road, addressData.city, addressData.country].filter(Boolean).join(', ');
+    const addr = [addressData.road, addressData.city, addressData.state, addressData.country].filter(Boolean).join(', ');
     if (addr) lines.push(truncate('📍 ' + addr, 52));
   }
 

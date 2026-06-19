@@ -193,7 +193,7 @@ img { max-width: 100%; display: block; }
   flex: 1; max-width: 260px;
   background: var(--accent);
   color: #fff; border: none; border-radius: 10px;
-  padding: 0.75rem 1.5rem;
+  padding: 0.8rem 1.2rem;
   font-size: 1rem; font-weight: 700; cursor: pointer;
   transition: background 0.2s, transform 0.1s;
 }
@@ -591,3 +591,6 @@ img { max-width: 100%; display: block; }
   .footer-inner { flex-direction: column; text-align: center; }
   .footer-links { justify-content: center; }
 }
+
+.step { pointer-events: none; cursor: default; }
+
