@@ -34,8 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
   previewWrap = document.getElementById('previewWrap');
 
   detectLocaleDefaults();
+});
+
+window.addEventListener('load', async () => {
+  await startCamera();
   requestGPS();
-  startCamera();
   setupUpload();
   syncToggleStyles();
 });
@@ -883,11 +886,11 @@ window.addEventListener('load', () => {
   const isStandalone = () => ('standalone' in window.navigator) && window.navigator.standalone;
   
   if (isIos() && !isStandalone()) {
-    const hasSeenPrompt = localStorage.getItem('ios-prompt-seen');
+    const hasSeenPrompt = sessionStorage.getItem('ios-prompt-seen');
     if (!hasSeenPrompt) {
       setTimeout(() => {
         document.getElementById('ios-prompt').classList.remove('hidden');
-        localStorage.setItem('ios-prompt-seen', 'true');
+        sessionStorage.setItem('ios-prompt-seen', 'true');
       }, 3000);
     }
   }
@@ -913,4 +916,5 @@ function wrapText(ctx, text, maxWidth) {
   lines.push(currentLine);
   return lines;
 }
+
 
