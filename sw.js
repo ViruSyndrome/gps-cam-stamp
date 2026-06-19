@@ -1,4 +1,4 @@
-const CACHE = 'gpscamstamp-v1';
+const CACHE = 'gpscamstamp-v2';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -6,7 +6,7 @@ const PRECACHE = [
   '/script.js',
   '/manifest.json',
   '/assets/favicon.svg',
-  '/assets/og-image.png'
+  '/assets/og-image.webp'
 ];
 
 self.addEventListener('install', e => {

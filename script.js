@@ -489,6 +489,8 @@ function drawStamp(ctx, W, H) {
     drawMinimal(ctx, lines, W, H, baseSize, lineH, padX, padY, showMap);
   } else if (tmpl === 'pro') {
     drawPro(ctx, lines, W, H, baseSize, lineH, padX, padY, showMap);
+  } else if (tmpl === 'card') {
+    drawCard(ctx, W, H, baseSize, padX, padY, showMap);
   } else {
     drawClassic(ctx, lines, W, H, baseSize, lineH, padX, padY, showMap);
   }
@@ -584,6 +586,86 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+function drawCard(ctx, W, H, sz, padX, padY, showMap) {
+  const now = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
+  const cardW = Math.round(W * 0.9);
+  const cardX = Math.round((W - cardW) / 2);
+  const mapSz = showMap ? Math.round(W * 0.22) : 0;
+  
+  let title = '';
+  let fullAddr = '';
+  if (chk('tog-address') && addressData) {
+    const locArr = [addressData.city || addressData.road, addressData.state, addressData.country].filter(Boolean);
+    title = locArr.join(', ');
+    if (addressData.country && addressData.country.toLowerCase() === 'india') title += ' 🇮🇳';
+    fullAddr = [addressData.road, addressData.city, addressData.state, addressData.postcode, addressData.country].filter(Boolean).join(', ');
+  } else {
+    title = 'Location Unknown';
+  }
+  
+  let coords = '';
+  if (chk('tog-coords') && gpsData) {
+    coords = `Lat ${gpsData.lat.toFixed(6)}° Long ${gpsData.lng.toFixed(6)}°`;
+  }
+  
+  let dateStr = '';
+  if (chk('tog-date')) {
+    const opts = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'shortOffset' };
+    dateStr = now.toLocaleDateString('en-GB', opts).replace(',', '');
+  }
+  
+  ctx.font = `bold ${Math.round(sz * 1.1)}px sans-serif`;
+  const titleLines = wrapText(ctx, title, cardW - mapSz - padX * 3);
+  ctx.font = `${Math.round(sz * 0.85)}px sans-serif`;
+  const addrLines = fullAddr ? wrapText(ctx, fullAddr, cardW - mapSz - padX * 3) : [];
+  
+  const textH = (titleLines.length * sz * 1.3) + (addrLines.length * sz * 1.1) + (coords ? sz * 1.2 : 0) + (dateStr ? sz * 1.2 : 0);
+  const contentH = Math.max(textH, mapSz);
+  const cardH = contentH + padY * 2;
+  const cardY = H - cardH - padY;
+  
+  // Branding Badge
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.beginPath();
+  const badgeW = sz * 9;
+  const badgeH = sz * 1.8;
+  const badgeX = cardX + cardW - badgeW;
+  const badgeY = cardY - badgeH;
+  if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, [8, 8, 0, 0]);
+  else ctx.rect(badgeX, badgeY, badgeW, badgeH); // fallback
+  ctx.fill();
+  
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.round(sz * 0.75)}px sans-serif`;
+  ctx.fillText('📷 GeoStamper', badgeX + padX, badgeY + badgeH * 0.65);
+  
+  // Card Background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cardX, cardY, cardW, cardH, 12);
+  else ctx.rect(cardX, cardY, cardW, cardH);
+  ctx.fill();
+  
+  if (showMap) {
+    drawMapThumb(ctx, cardX + padX, cardY + padY, mapSz, mapTileImg, mapTilePin);
+  }
+  
+  let textY = cardY + padY + sz;
+  const textX = cardX + padX + mapSz + padX;
+  
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.round(sz * 1.1)}px sans-serif`;
+  titleLines.forEach(l => { ctx.fillText(l, textX, textY); textY += sz * 1.3; });
+  
+  textY += sz * 0.2;
+  ctx.font = `${Math.round(sz * 0.85)}px sans-serif`;
+  addrLines.forEach(l => { ctx.fillText(l, textX, textY); textY += sz * 1.1; });
+  
+  textY += sz * 0.3;
+  if (coords) { ctx.fillText(coords, textX, textY); textY += sz * 1.2; }
+  if (dateStr) { ctx.fillText(dateStr, textX, textY); }
 }
 
 function drawMapThumb(ctx, x, y, size, tileImg, pin) {
@@ -779,3 +861,35 @@ function syncToggleStyles() {
     });
   });
 }
+
+
+// --- PWA & UX Enhancements ---
+
+function haptic() {
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+// Override buttons with haptics
+document.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', haptic);
+});
+
+// iOS Install Prompt Logic
+window.addEventListener('load', () => {
+  const isIos = () => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(userAgent);
+  };
+  const isStandalone = () => ('standalone' in window.navigator) && window.navigator.standalone;
+  
+  if (isIos() && !isStandalone()) {
+    const hasSeenPrompt = localStorage.getItem('ios-prompt-seen');
+    if (!hasSeenPrompt) {
+      setTimeout(() => {
+        document.getElementById('ios-prompt').classList.remove('hidden');
+        localStorage.setItem('ios-prompt-seen', 'true');
+      }, 3000);
+    }
+  }
+});
+

@@ -594,3 +594,11 @@ img { max-width: 100%; display: block; }
 
 .step { pointer-events: none; cursor: default; }
 
+
+/* iOS Prompt */
+.ios-prompt { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: #fff; color: #1e293b; padding: 16px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 10000; }
+.ios-prompt.hidden { display: none; }
+.ios-prompt-close { position: absolute; top: 8px; right: 12px; background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer; }
+.ios-prompt p { font-size: 0.95rem; line-height: 1.4; margin: 0; }
+.ios-prompt-action { font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 6px; }
+

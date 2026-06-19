@@ -252,6 +252,7 @@
           <button class="tmpl-btn active" onclick="setTemplate('classic')" aria-pressed="true">Classic</button>
           <button class="tmpl-btn" onclick="setTemplate('minimal')" aria-pressed="false">Minimal</button>
           <button class="tmpl-btn" onclick="setTemplate('pro')" aria-pressed="false">Pro</button>
+          <button class="tmpl-btn" onclick="setTemplate('card')" aria-pressed="false">Card</button>
         </div>
       </div>
 
@@ -665,5 +666,12 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
   }
 </script>
+  <div id="ios-prompt" class="ios-prompt hidden">
+    <div class="ios-prompt-content">
+      <button class="ios-prompt-close" onclick="document.getElementById('ios-prompt').classList.add('hidden')" aria-label="Close">×</button>
+      <p style="margin-bottom:8px">Install <strong>GeoStamper</strong> on your iPhone for offline access and a native app experience!</p>
+      <p class="ios-prompt-action">Tap the Share icon <span aria-hidden="true">📤</span> and select <strong>Add to Home Screen</strong></p>
+    </div>
+  </div>
 </body>
 </html>
