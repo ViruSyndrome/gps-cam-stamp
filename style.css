@@ -613,7 +613,7 @@ img { max-width: 100%; display: block; }
   .section { display: none !important; }
   .network-footer { display: none !important; }
   .ios-prompt { display: none !important; }
-  body { background: var(--bg); overflow: hidden; }
+  body { background: var(--bg); }
 }
 
 /* MOBILE HERO SWAP */
