@@ -602,3 +602,30 @@ img { max-width: 100%; display: block; }
 .ios-prompt p { font-size: 0.95rem; line-height: 1.4; margin: 0; }
 .ios-prompt-action { font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 6px; }
 
+
+
+/* PWA NATIVE APP OVERRIDE */
+@media (display-mode: standalone) {
+  .navbar { display: none !important; }
+  .hero-text { display: none !important; }
+  .hero { padding: 0 !important; max-width: 100% !important; display: block !important; }
+  .tool-card { border: none !important; border-radius: 0 !important; box-shadow: none !important; min-height: 100vh !important; }
+  .section { display: none !important; }
+  .network-footer { display: none !important; }
+  .ios-prompt { display: none !important; }
+  body { background: var(--bg); overflow: hidden; }
+}
+
+/* MOBILE HERO SWAP */
+@media (max-width: 900px) {
+  .hero { display: flex; flex-direction: column; }
+  .hero-text { order: 2; margin-top: 2rem; }
+  .tool-card { order: 1; width: 100%; }
+}
+
+
+@media (display-mode: standalone) {
+  .navbar { display: flex !important; }
+  .nav-links, .nav-mobile-btn { display: none !important; }
+}
+
