@@ -17,6 +17,12 @@ let addressCache   = {};     // lat,lng → address to avoid repeat calls
 let batchImages    = [];     // [{img, filename}] for batch mode
 let mapTileImg  = null;   // OSM tile Image for map thumbnail
 let mapTilePin  = null;   // {px, py} pin pixel position within 256×256 tile
+let appLogoImg  = null;   // Real SVG logo for the stamp
+
+const initLogo = new Image();
+initLogo.onload = () => { appLogoImg = initLogo; };
+initLogo.src = 'assets/favicon.svg';
+
 let weatherData = null;   // {temp, unit, condition, icon}
 let tempUnit    = 'C';    // 'C' | 'F' — auto-detected from locale/country
 let coordFmt    = 'decimal'; // 'decimal' | 'dms'
@@ -187,7 +193,7 @@ function latLngToTilePixel(lat, lng, zoom) {
 }
 
 async function fetchMapTile(lat, lng) {
-  const zoom = 14;
+  const zoom = 16;
   const { tx, ty, px, py } = latLngToTilePixel(lat, lng, zoom);
   mapTilePin = { px, py };
   try {
@@ -560,7 +566,13 @@ function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.font = `bold ${Math.round(sz * 0.9)}px sans-serif`;
   ctx.fillStyle = '#fff';
   ctx.textBaseline = 'middle';
-  ctx.fillText('📍 GPS CAM STAMP', W - panelW + pX, sz * 1.1);
+  if (appLogoImg) {
+    const logoSz = Math.round(sz * 1.4);
+    ctx.drawImage(appLogoImg, W - panelW + pX, sz * 0.45, logoSz, logoSz);
+    ctx.fillText('GPS CAM STAMP', W - panelW + pX + logoSz + sz * 0.4, sz * 1.1);
+  } else {
+    ctx.fillText('🌍 GPS CAM STAMP', W - panelW + pX, sz * 1.1);
+  }
   ctx.font = `${sz}px Courier New, monospace`;
   ctx.textBaseline = 'top';
   const startY = Math.round(sz * 2.5);
@@ -676,18 +688,31 @@ function drawMapThumb(ctx, x, y, size, tileImg, pin) {
   ctx.beginPath();
   ctx.rect(x, y, size, size);
   ctx.clip();
-  // Scale OSM tile (256px source) centered on pin location
-  const scale = size / 256;
-  ctx.drawImage(tileImg, x + size / 2 - pin.px * scale, y + size / 2 - pin.py * scale, 256 * scale, 256 * scale);
-  // Red pin marker at center
-  const r = Math.max(4, Math.round(size * 0.07));
+  // Fill the entire bounding box with the tile so there's no empty space
+  ctx.drawImage(tileImg, x, y, size, size);
+  
+  // Calculate relative pin position within the box
+  // mapTilePin is 0-256 relative to the original tile
+  const pinX = x + (pin.px / 256) * size;
+  const pinY = y + (pin.py / 256) * size;
+  
+  // Draw an actual map pin marker instead of a giant circle
+  const r = Math.max(3, Math.round(size * 0.04));
   ctx.beginPath();
-  ctx.arc(x + size / 2, y + size / 2, r, 0, Math.PI * 2);
+  ctx.arc(pinX, pinY - r*1.5, r, Math.PI, 0); // top dome
+  ctx.lineTo(pinX, pinY + r*1.5);             // tip
+  ctx.closePath();
   ctx.fillStyle = '#ef4444';
   ctx.fill();
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = Math.max(1, size * 0.025);
+  ctx.lineWidth = Math.max(1.5, size * 0.015);
   ctx.stroke();
+  
+  // Small dot inside pin
+  ctx.beginPath();
+  ctx.arc(pinX, pinY - r*1.5, r*0.4, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
   ctx.restore();
   // Border
   ctx.strokeStyle = 'rgba(14,165,233,0.7)';
