@@ -47,6 +47,22 @@ window.addEventListener('load', async () => {
   requestGPS();
   setupUpload();
   syncToggleStyles();
+  
+  const sampleImg = new Image();
+  sampleImg.onload = () => {
+    if (!capturedImage) {
+      capturedImage = sampleImg;
+      latLng = { lat: 40.7580, lng: -73.9855 };
+      accuracy = 5;
+      addressData = { city: "New York", suburb: "Manhattan", road: "Broadway", country: "United States" };
+      altitude = 12.5;
+      weatherData = { temp: 22, unit: tempUnit, condition: "Sunny", icon: "☀️" };
+      timestamp = new Date();
+      updateFmtUI();
+      redrawStamp();
+    }
+  };
+  sampleImg.src = 'assets/og-image.webp';
 });
 
 // ── GPS ───────────────────────────────────────────────────
@@ -197,7 +213,7 @@ async function fetchMapTile(lat, lng) {
   const { tx, ty, px, py } = latLngToTilePixel(lat, lng, zoom);
   mapTilePin = { px, py };
   try {
-    const res     = await fetch(`https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`);
+    const res     = await fetch(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`);
     const blob    = await res.blob();
     const blobUrl = URL.createObjectURL(blob);
     const img     = new Image();
@@ -513,7 +529,7 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.fillRect(0, H - barH, W, barH);
   ctx.fillStyle = '#0ea5e9';
   ctx.fillRect(0, H - barH, W, 2);
-  if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, mapTileImg, mapTilePin);
+  if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, barH, mapTileImg, mapTilePin);
   ctx.font = `bold ${sz}px Courier New, monospace`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
@@ -583,9 +599,9 @@ function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.fillStyle = 'rgba(14,165,233,0.2)';
   ctx.fillRect(W - panelW, Math.round(sz * 2.2), panelW, 1);
   if (showMap) {
-    const mapX = W - panelW + Math.round((panelW - mapSz) / 2);
-    const mapY = H - mapSz - pY;
-    drawMapThumb(ctx, mapX, mapY, mapSz, mapTileImg, mapTilePin);
+    const mapY = Math.round(startY + lines.length * lH * 1.2 + sz * 0.5);
+    const mapH = H - mapY;
+    drawMapThumb(ctx, W - panelW, mapY, panelW, mapH, mapTileImg, mapTilePin);
   }
 }
 
@@ -664,7 +680,7 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap) {
   ctx.fill();
   
   if (showMap) {
-    drawMapThumb(ctx, cardX + padX, cardY + padY, mapSz, mapTileImg, mapTilePin);
+    drawMapThumb(ctx, cardX + padX, cardY + padY, mapSz, mapSz, mapTileImg, mapTilePin);
   }
   
   let textY = cardY + padY + sz;
@@ -683,21 +699,22 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap) {
   if (dateStr) { ctx.fillText(dateStr, textX, textY); }
 }
 
-function drawMapThumb(ctx, x, y, size, tileImg, pin) {
+function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
   ctx.save();
   ctx.beginPath();
-  ctx.rect(x, y, size, size);
+  ctx.rect(x, y, w, h);
   ctx.clip();
   // Fill the entire bounding box with the tile so there's no empty space
-  ctx.drawImage(tileImg, x, y, size, size);
+  ctx.drawImage(tileImg, x, y, w, h);
   
   // Calculate relative pin position within the box
   // mapTilePin is 0-256 relative to the original tile
-  const pinX = x + (pin.px / 256) * size;
-  const pinY = y + (pin.py / 256) * size;
+  const pinX = x + (pin.px / 256) * w;
+  const pinY = y + (pin.py / 256) * h;
   
   // Draw an actual map pin marker instead of a giant circle
-  const r = Math.max(3, Math.round(size * 0.04));
+  const minDim = Math.min(w, h);
+  const r = Math.max(3, Math.round(minDim * 0.015));
   ctx.beginPath();
   ctx.arc(pinX, pinY - r*1.5, r, Math.PI, 0); // top dome
   ctx.lineTo(pinX, pinY + r*1.5);             // tip
@@ -705,7 +722,7 @@ function drawMapThumb(ctx, x, y, size, tileImg, pin) {
   ctx.fillStyle = '#ef4444';
   ctx.fill();
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = Math.max(1.5, size * 0.015);
+  ctx.lineWidth = Math.max(1.5, minDim * 0.015);
   ctx.stroke();
   
   // Small dot inside pin
