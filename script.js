@@ -52,12 +52,9 @@ window.addEventListener('load', async () => {
   sampleImg.onload = () => {
     if (!capturedImage) {
       capturedImage = sampleImg;
-      latLng = { lat: 40.7580, lng: -73.9855 };
-      accuracy = 5;
+      gpsData = { lat: 40.7580, lng: -73.9855, altitude: 12.5, accuracy: 5, _exifDate: new Date() };
       addressData = { city: "New York", suburb: "Manhattan", road: "Broadway", country: "United States" };
-      altitude = 12.5;
       weatherData = { temp: 22, unit: tempUnit, condition: "Sunny", icon: "☀️" };
-      timestamp = new Date();
       updateFmtUI();
       redrawStamp();
     }
