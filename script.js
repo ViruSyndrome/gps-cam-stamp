@@ -564,7 +564,7 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   });
   if (showMap) {
     const mapSz = tagH;
-    drawMapThumb(ctx, W - mapSz - pX, y, mapSz, mapTileImg, mapTilePin);
+    drawMapThumb(ctx, W - mapSz - pX, y, mapSz, mapSz, mapTileImg, mapTilePin);
   }
 }
 

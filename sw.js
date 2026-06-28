@@ -1,9 +1,9 @@
-const CACHE = 'gpscamstamp-v5';
+const CACHE = 'gpscamstamp-v6';
 const PRECACHE = [
   '/',
-  '/index.html?v=5',
-  '/style.css?v=5',
-  '/script.js?v=5',
+  '/index.html?v=6',
+  '/style.css?v=6',
+  '/script.js?v=6',
   '/manifest.json',
   '/assets/favicon.svg',
   '/assets/og-image.webp'
@@ -51,3 +51,4 @@ self.addEventListener('fetch', e => {
     })
   );
 });
+
