@@ -658,7 +658,7 @@
 <script src="script.js?v=5"></script>
 <script>
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   }
 </script>
   <div id="ios-prompt" class="ios-prompt hidden">
@@ -670,4 +670,5 @@
   </div>
 </body>
 </html>
+
 

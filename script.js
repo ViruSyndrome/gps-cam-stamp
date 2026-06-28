@@ -731,13 +731,13 @@ function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
   // Border
   ctx.strokeStyle = 'rgba(14,165,233,0.7)';
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, y, size, size);
+  ctx.strokeRect(x, y, w, h);
   // OSM attribution (required by OpenStreetMap tile usage policy)
-  ctx.font = `${Math.max(7, Math.round(size * 0.09))}px sans-serif`;
+  ctx.font = `${Math.max(7, Math.round(Math.min(w,h) * 0.09))}px sans-serif`;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('© OpenStreetMap', x + size - 2, y + size - 1);
+  ctx.fillText('© OpenStreetMap', x + w - 2, y + h - 1);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 }
