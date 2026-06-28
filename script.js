@@ -702,7 +702,13 @@ function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
   ctx.rect(x, y, w, h);
   ctx.clip();
   // Fill the entire bounding box with the tile so there's no empty space
-  ctx.drawImage(tileImg, x, y, w, h);
+  try {
+    if (tileImg && tileImg.complete && tileImg.naturalWidth > 0) {
+      ctx.drawImage(tileImg, x, y, w, h);
+    }
+  } catch(e) {
+    // Silently fail if tileImg is invalid (e.g. corrupted on certain Android devices)
+  }
   
   // Calculate relative pin position within the box
   // mapTilePin is 0-256 relative to the original tile
