@@ -113,7 +113,7 @@
       {
         "@type": "Question",
         "name": "What are the stamp template styles available?",
-        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp offers three templates: Classic (dark bar across the bottom, like traditional camera date stamps), Minimal (small semi-transparent tag in the corner, good for real estate and travel photos), and Pro (structured side panel with a branded header, ideal for professional documentation)." }
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp offers four templates: Classic (dark bar across the bottom, like traditional camera date stamps), Minimal (small semi-transparent tag in the corner, good for real estate and travel photos), Pro (structured side panel with a branded header, ideal for professional documentation), and Card (a floating location card overlay with a map thumbnail on the left and address, coordinates and date on the right — great for sharing on social media)." }
       },
       {
         "@type": "Question",
@@ -176,239 +176,6 @@
       <div class="hero-stat">
         <div class="hero-stat-val">0s</div>
         <div class="hero-stat-lbl">Setup time</div>
-      </div>
-      <div class="hero-stat">
-        <div class="hero-stat-val">100%</div>
-        <div class="hero-stat-lbl">Free forever</div>
-      </div>
-      <div class="hero-stat">
-        <div class="hero-stat-val">3</div>
-        <div class="hero-stat-lbl">Stamp templates</div>
-      </div>
-    </div>
-    <div class="hero-trust">
-      <span class="trust-item">Works on desktop &amp; mobile</span>
-      <span class="trust-item">No sign-up required</span>
-      <span class="trust-item">Photos stay on your device</span>
-      <span class="trust-item">No subscription</span>
-    </div>
-  </div>
-
-  <!-- TOOL -->
-  <div class="tool-card" id="tool">
-    <div class="tool-tabs" role="tablist">
-      <button class="tab-btn active" role="tab" aria-selected="true" id="tab-camera" aria-controls="panel-camera" onclick="switchTab('camera')">📷 Camera</button>
-      <button class="tab-btn" role="tab" aria-selected="false" id="tab-upload" aria-controls="panel-upload" onclick="switchTab('upload')">🖼 Upload Photo</button>
-    </div>
-
-    <!-- GPS status bar -->
-    <div class="gps-bar" id="gpsBar" role="status" aria-live="polite">
-      <div class="gps-dot" aria-hidden="true"></div>
-      <span id="gpsStatus">Waiting for location permission…</span>
-    </div>
-
-    <!-- Camera panel -->
-    <div class="panel" id="panel-camera" role="tabpanel" aria-labelledby="tab-camera">
-      <div class="video-wrap">
-        <video id="camVideo" class="cam-video" autoplay playsinline muted></video>
-        <div class="cam-overlay" aria-hidden="true">
-          <div class="cam-grid"></div>
-        </div>
-      </div>
-      <div class="cam-controls">
-        <button class="btn-switch" id="btnSwitch" onclick="switchCamera()" title="Switch camera" aria-label="Switch front/back camera">⇄</button>
-        <button class="btn-capture" id="btnCapture" onclick="capturePhoto()">📷 Capture &amp; Stamp</button>
-      </div>
-    </div>
-
-    <!-- Upload panel -->
-    <div class="panel hidden" id="panel-upload" role="tabpanel" aria-labelledby="tab-upload">
-      <label class="drop-zone" id="dropZone" for="fileInput">
-        <input type="file" id="fileInput" accept="image/*" multiple aria-label="Upload photos" />
-        <div class="drop-inner">
-          <div class="drop-icon" aria-hidden="true">🖼️</div>
-          <div class="btn-primary" style="display:inline-block; margin-bottom:0.5rem;">Select Photo(s)</div>
-          <p>or drag &amp; drop</p>
-          <p class="drop-hint">JPG, PNG, WEBP — up to 20MB</p>
-        </div>
-      </label>
-    </div>
-
-    <!-- Preview & controls (shared) -->
-    <div class="preview-wrap" id="previewWrap">
-      <div class="canvas-container">
-        <canvas id="stampCanvas" aria-label="Stamped photo preview"></canvas>
-      </div>
-
-      <!-- Template selector -->
-      <div class="ctrl-row">
-        <div class="ctrl-label">Template</div>
-        <div class="template-btns" role="group" aria-label="Stamp template">
-          <button class="tmpl-btn active" onclick="setTemplate('classic')" aria-pressed="true">Classic</button>
-          <button class="tmpl-btn" onclick="setTemplate('minimal')" aria-pressed="false">Minimal</button>
-          <button class="tmpl-btn" onclick="setTemplate('pro')" aria-pressed="false">Pro</button>
-          <button class="tmpl-btn" onclick="setTemplate('card')" aria-pressed="false">Card</button>
-        </div>
-      </div>
-
-      <!-- Stamp fields toggles -->
-      <div class="ctrl-row">
-        <div class="ctrl-label">Stamp Fields</div>
-        <div class="toggles-grid" role="group" aria-label="Stamp fields">
-          <label class="toggle-label checked">
-            <input type="checkbox" id="tog-address" checked onchange="redrawStamp()" aria-label="Show address" />
-            <div class="tog-dot" aria-hidden="true"></div> Address
-          </label>
-          <label class="toggle-label checked">
-            <input type="checkbox" id="tog-coords" checked onchange="redrawStamp()" aria-label="Show coordinates" />
-            <div class="tog-dot" aria-hidden="true"></div> Lat / Long
-          </label>
-          <label class="toggle-label checked">
-            <input type="checkbox" id="tog-altitude" checked onchange="redrawStamp()" aria-label="Show altitude" />
-            <div class="tog-dot" aria-hidden="true"></div> Altitude
-          </label>
-          <label class="toggle-label checked">
-            <input type="checkbox" id="tog-datetime" checked onchange="redrawStamp()" aria-label="Show date and time" />
-            <div class="tog-dot" aria-hidden="true"></div> Date &amp; Time
-          </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="tog-accuracy" onchange="redrawStamp()" aria-label="Show GPS accuracy" />
-            <div class="tog-dot" aria-hidden="true"></div> Accuracy
-          </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="tog-compass" onchange="redrawStamp()" aria-label="Show compass" />
-            <div class="tog-dot" aria-hidden="true"></div> Compass
-          </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="tog-map" checked onchange="redrawStamp()" aria-label="Show map thumbnail" />
-            <div class="tog-dot" aria-hidden="true"></div> Map
-          </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="tog-weather" onchange="redrawStamp()" aria-label="Show weather" />
-            <div class="tog-dot" aria-hidden="true"></div> Weather
-          </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="tog-speed" onchange="redrawStamp()" aria-label="Show speed" />
-            <div class="tog-dot" aria-hidden="true"></div> Speed
-          </label>
-        </div>
-      </div>
-
-      <!-- Format settings -->
-      <div class="ctrl-row">
-        <div class="ctrl-label">Format Settings</div>
-        <div class="fmt-settings">
-          <div class="fmt-group">
-            <span class="fmt-lbl">Temp</span>
-            <div class="seg-ctrl">
-              <button id="fmt-c" class="seg-btn active" onclick="setTempUnit('C')" aria-pressed="true">°C</button>
-              <button id="fmt-f" class="seg-btn" onclick="setTempUnit('F')" aria-pressed="false">°F</button>
-            </div>
-          </div>
-          <div class="fmt-group">
-            <span class="fmt-lbl">Coords</span>
-            <div class="seg-ctrl">
-              <button id="fmt-dec" class="seg-btn active" onclick="setCoordFmt('decimal')" aria-pressed="true">Dec</button>
-              <button id="fmt-dms" class="seg-btn" onclick="setCoordFmt('dms')" aria-pressed="false">DMS</button>
-            </div>
-          </div>
-          <div class="fmt-group">
-            <span class="fmt-lbl">Date</span>
-            <div class="seg-ctrl">
-              <button id="fmt-dmy" class="seg-btn active" onclick="setDateFmt('dmy')" aria-pressed="true">DD/MM</button>
-              <button id="fmt-mdy" class="seg-btn" onclick="setDateFmt('mdy')" aria-pressed="false">MM/DD</button>
-              <button id="fmt-iso" class="seg-btn" onclick="setDateFmt('iso')" aria-pressed="false">ISO</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Custom note -->
-      <div class="ctrl-row">
-        <div class="ctrl-label">Custom Note (optional)</div>
-        <input type="text" class="custom-input" id="customNote" placeholder="e.g. Site Inspection — Work Complete" maxlength="80" oninput="redrawStamp()" aria-label="Custom note for stamp" />
-      </div>
-
-      <!-- Actions -->
-      <div class="action-btns">
-        <button class="btn-primary" onclick="downloadPhoto()" aria-label="Download stamped photo">⬇ Download Stamped Photo</button>
-        <button class="btn-secondary" onclick="resetTool()" aria-label="Take a new photo">↩ New</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section class="section" id="how-it-works" aria-labelledby="hiw-heading">
-  <div class="section-inner">
-    <div class="section-header">
-      <div class="section-tag">Simple</div>
-      <h2 id="hiw-heading">Stamp a Photo in 3 Steps</h2>
-      <p>No app to download. No account to create. Works right in your browser.</p>
-    </div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num" aria-hidden="true">1</div>
-        <h3>Allow Location</h3>
-        <p>Click "Allow" when your browser asks for location. GPS coordinates are read directly — nothing is sent to any server.</p>
-      </div>
-      <div class="step">
-        <div class="step-num" aria-hidden="true">2</div>
-        <h3>Capture or Upload</h3>
-        <p>Use your camera live, or upload any existing photo from your device — including photos from your gallery.</p>
-      </div>
-      <div class="step">
-        <div class="step-num" aria-hidden="true">3</div>
-        <h3>Download &amp; Share</h3>
-        <p>Choose your template, toggle the fields you want, and download the stamped photo. Ready to share instantly.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FEATURES -->
-<section class="section use-cases-bg" aria-labelledby="feat-heading">
-  <div class="section-inner">
-    <div class="section-header">
-      <div class="section-tag">Features</div>
-      <h2 id="feat-heading">Everything You Need. Nothing You Don't.</h2>
-      <p>All features are free. No subscription. No ad-wall blocking the camera.</p>
-    </div>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon" aria-hidden="true">📍</div>
-        <h3>GPS Coordinates</h3>
-        <p>Latitude, longitude and altitude auto-stamped at the moment of capture. Decimal and DMS formats supported.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" aria-hidden="true">🏠</div>
-        <h3>Street Address</h3>
-        <p>Full reverse-geocoded street address overlaid on your photo. No API key needed — uses OpenStreetMap.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" aria-hidden="true">🕐</div>
-        <h3>Date &amp; Time Stamp</h3>
-        <p>Tamper-visible timestamp in your chosen format (DD/MM/YYYY, MM-DD-YYYY, 12hr or 24hr).</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" aria-hidden="true">📤</div>
-        <h3>Upload Any Photo</h3>
-        <p>Already have a photo taken elsewhere? Upload it, enter the location manually, and stamp it in seconds.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" aria-hidden="true">🗂</div>
-        <h3>Batch Stamping</h3>
-        <p>Upload multiple photos at once and stamp them all with the same GPS data and template. Perfect for site reports.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" aria-hidden="true">🎨</div>
-        <h3>3 Templates</h3>
-        <p>Classic (full info bar), Minimal (clean corner tag), Pro (branded dark panel with map thumbnail).</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" aria-hidden="true">🖥</div>
-        <h3>Desktop + Mobile</h3>
-        <p>The only free GPS stamp tool that works equally well on a laptop, tablet, iPhone and Android.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" aria-hidden="true">🔒</div>
@@ -570,7 +337,13 @@
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           Is GPS Cam Stamp really free? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
-        <div class="faq-a">Yes, completely free. All features — camera, upload, batch stamping, all templates, all stamp fields — are free with no subscription, no trial period and no credit card.</div>
+        <div class="faq-a">Yes, completely free. All features - camera, upload, batch stamping, all templates, all stamp fields - are free with no subscription, no trial period and no credit card.</div>
+      </div>
+      <div class="faq-item" role="listitem">
+        <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+          What are the stamp template styles available? <span class="faq-arrow" aria-hidden="true">▼</span>
+        </button>
+        <div class="faq-a">GPS Cam Stamp offers four templates: Classic (dark bar across the bottom, like traditional camera date stamps), Minimal (small semi-transparent tag in the corner, good for real estate and travel photos), Pro (structured side panel with a branded header, ideal for professional documentation), and Card (a floating location card overlay with a map thumbnail on the left and address, coordinates and date on the right - great for sharing on social media).</div>
       </div>
       <div class="faq-item" role="listitem">
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
@@ -618,7 +391,7 @@
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           How does GPS Cam Stamp compare to GPS Map Camera app? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
-        <div class="faq-a">GPS Map Camera has 100M+ installs but requires app installation, is phone-only, and the free tier is heavily interrupted by ads. GPS Cam Stamp is web-based, works on desktop and mobile without any install, is completely free, and adds features like map thumbnail, weather, batch upload, and 3 stamp templates.</div>
+        <div class="faq-a">GPS Map Camera has 100M+ installs but requires app installation, is phone-only, and the free tier is heavily interrupted by ads. GPS Cam Stamp is web-based, works on desktop and mobile without any install, is completely free, and adds features like map thumbnail, weather, batch upload, and 4 stamp templates.</div>
       </div>
       <div class="faq-item" role="listitem">
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
