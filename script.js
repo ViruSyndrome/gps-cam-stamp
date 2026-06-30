@@ -527,13 +527,14 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.fillStyle = '#0ea5e9';
   ctx.fillRect(0, H - barH, W, 2);
   if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, barH, mapTileImg, mapTilePin);
+  const textMaxW = (W - mapSz - pX * 2);
   ctx.font = `bold ${sz}px Courier New, monospace`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
-    ctx.fillText(line, pX + 1, H - barH + pY + i * lH + 1);
+    ctx.fillText(line, pX + 1, H - barH + pY + i * lH + 1, textMaxW);
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#f1f5f9';
-    ctx.fillText(line, pX, H - barH + pY + i * lH);
+    ctx.fillText(line, pX, H - barH + pY + i * lH, textMaxW);
   });
   ctx.font = `${Math.round(sz * 0.75)}px sans-serif`;
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
@@ -598,7 +599,7 @@ function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   if (showMap) {
     const mapY = Math.round(startY + lines.length * lH * 1.2 + sz * 0.5);
     const mapH = H - mapY;
-    drawMapThumb(ctx, W - panelW, mapY, panelW, mapH, mapTileImg, mapTilePin);
+    if (mapH > 20) drawMapThumb(ctx, W - panelW, mapY, panelW, mapH, mapTileImg, mapTilePin);
   }
 }
 
@@ -656,13 +657,11 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap) {
   
   // Branding Badge
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.beginPath();
   const badgeW = sz * 9;
   const badgeH = sz * 1.8;
   const badgeX = cardX + cardW - badgeW;
   const badgeY = cardY - badgeH;
-  if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, [8, 8, 0, 0]);
-  else ctx.rect(badgeX, badgeY, badgeW, badgeH); // fallback
+  roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 8);
   ctx.fill();
   
   ctx.fillStyle = '#fff';
@@ -671,9 +670,7 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap) {
   
   // Card Background
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(cardX, cardY, cardW, cardH, 12);
-  else ctx.rect(cardX, cardY, cardW, cardH);
+  roundRect(ctx, cardX, cardY, cardW, cardH, 12);
   ctx.fill();
   
   if (showMap) {
@@ -681,22 +678,38 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap) {
   }
   
   let textY = cardY + padY + sz;
-  const textX = cardX + padX + mapSz + padX;
+  const textX = cardX + padX + mapSz + (showMap ? padX : 0);
+  const textMaxW = cardX + cardW - textX - padX;
   
   ctx.fillStyle = '#fff';
   ctx.font = `bold ${Math.round(sz * 1.1)}px sans-serif`;
-  titleLines.forEach(l => { ctx.fillText(l, textX, textY); textY += sz * 1.3; });
+  titleLines.forEach(l => { ctx.fillText(l, textX, textY, textMaxW); textY += sz * 1.3; });
   
   textY += sz * 0.2;
   ctx.font = `${Math.round(sz * 0.85)}px sans-serif`;
-  addrLines.forEach(l => { ctx.fillText(l, textX, textY); textY += sz * 1.1; });
+  addrLines.forEach(l => { ctx.fillText(l, textX, textY, textMaxW); textY += sz * 1.1; });
   
   textY += sz * 0.3;
-  if (coords) { ctx.fillText(coords, textX, textY); textY += sz * 1.2; }
-  if (dateStr) { ctx.fillText(dateStr, textX, textY); }
+  if (coords) { ctx.fillText(coords, textX, textY, textMaxW); textY += sz * 1.2; }
+  if (dateStr) { ctx.fillText(dateStr, textX, textY, textMaxW); textY += sz * 1.2; }
+  
+  // Render additional stamp fields (altitude, weather, speed, etc.) from toggles
+  const extraLines = buildStampLines().filter(l => {
+    // Skip address, coords, date — already rendered above
+    return !l.startsWith('📍') && !l.startsWith('🌐') && !l.startsWith('🕐');
+  });
+  ctx.font = `${Math.round(sz * 0.8)}px Courier New, monospace`;
+  ctx.fillStyle = '#94a3b8';
+  extraLines.forEach(l => {
+    if (textY < cardY + cardH - sz) {
+      ctx.fillText(l, textX, textY, textMaxW);
+      textY += sz * 1.1;
+    }
+  });
 }
 
 function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
+  if (!pin || typeof pin.px === 'undefined' || typeof pin.py === 'undefined') return;
   ctx.save();
   ctx.beginPath();
   ctx.rect(x, y, w, h);
@@ -738,12 +751,12 @@ function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
   ctx.strokeStyle = 'rgba(14,165,233,0.7)';
   ctx.lineWidth = 1.5;
   ctx.strokeRect(x, y, w, h);
-  // OSM attribution (required by OpenStreetMap tile usage policy)
+  // Map attribution (ArcGIS World Imagery tiles require Esri attribution)
   ctx.font = `${Math.max(7, Math.round(Math.min(w,h) * 0.09))}px sans-serif`;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('© OpenStreetMap', x + w - 2, y + h - 1);
+  ctx.fillText('Powered by Esri', x + w - 2, y + h - 1);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 }
