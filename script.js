@@ -499,9 +499,10 @@ function drawStampedImage(img, targetCanvas) {
 function drawStamp(ctx, W, H) {
   const lines   = buildStampLines();
   const showMap = chk('tog-map') && mapTileImg && mapTilePin;
-  if (!lines.length && !showMap) return;
+  const tmpl    = currentTemplate;
+  // Card template renders its own graceful fallback ("Location Unknown") — never bail early
+  if (!lines.length && !showMap && tmpl !== 'card') return;
 
-  const tmpl = currentTemplate;
   const baseSize = Math.max(16, Math.round(W / 35));
   const lineH    = Math.round(baseSize * 1.55);
   const padX     = Math.round(W * 0.022);
@@ -1018,6 +1019,29 @@ function syncToggleStyles() {
 
 
 // --- PWA & UX Enhancements ---
+
+// Android / Chrome desktop: capture install prompt and show button
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('install-btn');
+  if (btn) btn.classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('install-btn');
+  if (btn) btn.classList.add('hidden');
+});
+function installPWA() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(() => {
+    deferredInstallPrompt = null;
+    const btn = document.getElementById('install-btn');
+    if (btn) btn.classList.add('hidden');
+  });
+}
 
 function haptic() {
   if (navigator.vibrate) navigator.vibrate(30);

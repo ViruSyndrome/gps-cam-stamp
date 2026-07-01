@@ -797,6 +797,15 @@ img { max-width: 100%; display: block; }
 .ios-prompt p { font-size: 0.95rem; line-height: 1.4; margin: 0; }
 .ios-prompt-action { font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 6px; }
 
+/* Android / Chrome PWA install button */
+.nav-install-btn {
+  background: none; border: 1.5px solid var(--accent); border-radius: 8px;
+  color: var(--accent); cursor: pointer; font-size: 0.82rem; font-weight: 600;
+  padding: 0.3rem 0.75rem; transition: background 0.2s, color 0.2s; white-space: nowrap;
+}
+.nav-install-btn:hover { background: var(--accent); color: #fff; }
+.nav-install-btn.hidden { display: none; }
+
 
 
 /* PWA NATIVE APP OVERRIDE */
