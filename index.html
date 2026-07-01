@@ -190,6 +190,156 @@
       </div>
     </div>
   </div>
+
+  <!-- ══ TOOL CARD ══ -->
+  <div class="tool-card" id="tool">
+
+    <!-- Camera / Upload tabs -->
+    <div class="tool-tabs" role="tablist">
+      <button class="tab-btn active" id="tab-camera" role="tab" aria-selected="true"
+              onclick="switchTab('camera')">📷 Camera</button>
+      <button class="tab-btn" id="tab-upload" role="tab" aria-selected="false"
+              onclick="switchTab('upload')">⬆ Upload</button>
+    </div>
+
+    <!-- GPS status bar -->
+    <div class="gps-bar" id="gpsBar" role="status" aria-live="polite">
+      <div class="gps-dot"></div>
+      <span id="gpsStatus">Requesting location…</span>
+    </div>
+
+    <!-- Camera panel -->
+    <div class="panel" id="panel-camera" role="tabpanel">
+      <div class="video-wrap">
+        <video class="cam-video" id="camVideo" autoplay playsinline muted aria-label="Camera viewfinder"></video>
+        <div class="cam-overlay" aria-hidden="true"><div class="cam-grid"></div></div>
+      </div>
+      <div class="cam-controls">
+        <button class="btn-capture" onclick="capturePhoto()">📸 Capture Photo</button>
+        <button class="btn-switch" onclick="switchCamera()" aria-label="Switch front/rear camera" title="Switch camera">🔄</button>
+      </div>
+    </div>
+
+    <!-- Upload panel -->
+    <div class="panel hidden" id="panel-upload" role="tabpanel">
+      <label class="drop-zone" id="dropZone" for="fileInput" tabindex="0" role="button"
+             aria-label="Upload photo — click or drag and drop">
+        <input type="file" id="fileInput" accept="image/*" multiple>
+        <div class="drop-inner">
+          <div class="drop-icon" aria-hidden="true">📁</div>
+          <p><strong>Click to upload</strong> or drag &amp; drop</p>
+          <p class="drop-hint">JPG · PNG · WEBP · Select multiple for batch stamping</p>
+        </div>
+      </label>
+    </div>
+
+    <!-- Preview + controls (shown after capture/upload) -->
+    <div class="preview-wrap hidden" id="previewWrap">
+
+      <!-- Stamped canvas -->
+      <div class="canvas-container">
+        <canvas id="stampCanvas" aria-label="Stamped photo preview"></canvas>
+      </div>
+
+      <!-- Template -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Template</div>
+        <div class="template-btns" role="group" aria-label="Stamp template">
+          <button class="tmpl-btn active" onclick="setTemplate('classic')">Classic</button>
+          <button class="tmpl-btn" onclick="setTemplate('minimal')">Minimal</button>
+          <button class="tmpl-btn" onclick="setTemplate('pro')">Pro</button>
+          <button class="tmpl-btn" onclick="setTemplate('card')">Card</button>
+        </div>
+      </div>
+
+      <!-- Stamp fields -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Stamp Fields</div>
+        <div class="toggles-grid" role="group" aria-label="Stamp field toggles">
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-address" checked onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Address
+          </label>
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-coords" checked onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Coordinates
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-altitude" onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Altitude
+          </label>
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-datetime" checked onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Date &amp; Time
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-accuracy" onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Accuracy
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-compass" onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Compass
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-speed" onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Speed
+          </label>
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-map" checked onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Map
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-weather" onchange="syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div> Weather
+          </label>
+        </div>
+      </div>
+
+      <!-- Format settings -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Format Settings</div>
+        <div class="fmt-settings" role="group" aria-label="Format settings">
+          <div class="fmt-group">
+            <span class="fmt-lbl">Temp</span>
+            <div class="seg-ctrl">
+              <button class="seg-btn active" id="fmt-c" onclick="setTempUnit('C')">°C</button>
+              <button class="seg-btn" id="fmt-f" onclick="setTempUnit('F')">°F</button>
+            </div>
+          </div>
+          <div class="fmt-group">
+            <span class="fmt-lbl">Coords</span>
+            <div class="seg-ctrl">
+              <button class="seg-btn active" id="fmt-dec" onclick="setCoordFmt('decimal')">decimal</button>
+              <button class="seg-btn" id="fmt-dms" onclick="setCoordFmt('dms')">DMS</button>
+            </div>
+          </div>
+          <div class="fmt-group">
+            <span class="fmt-lbl">Date</span>
+            <div class="seg-ctrl">
+              <button class="seg-btn active" id="fmt-dmy" onclick="setDateFmt('dmy')">D/M/Y</button>
+              <button class="seg-btn" id="fmt-mdy" onclick="setDateFmt('mdy')">M/D/Y</button>
+              <button class="seg-btn" id="fmt-iso" onclick="setDateFmt('iso')">ISO</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom note -->
+      <div class="ctrl-row">
+        <input class="custom-input" id="customNote" type="text"
+               placeholder="Custom note — e.g. Site Visit, Delivery Confirmed…"
+               maxlength="60" oninput="redrawStamp()" aria-label="Custom stamp note">
+      </div>
+
+      <!-- Actions -->
+      <div class="action-btns">
+        <button class="btn-primary" onclick="downloadPhoto()">⬇ Download Stamped Photo</button>
+        <button class="btn-secondary" onclick="location.reload()">↺ New</button>
+      </div>
+
+    </div><!-- /preview-wrap -->
+  </div><!-- /tool-card -->
+
 </section>
 
 <!-- COMPARISON TABLE -->
