@@ -252,7 +252,7 @@ async function startCamera() {
   } catch (err) {
     // Camera unavailable (desktop without cam, permission denied)
     const panel = document.getElementById('panel-camera');
-    panel.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-muted)">
+    if (panel) panel.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-muted)">
       <div style="font-size:2.5rem;margin-bottom:1rem">📷</div>
       <p>Camera not available or permission denied.<br>Use the <strong>Upload Photo</strong> tab instead.</p>
     </div>`;
@@ -488,7 +488,7 @@ function redrawStamp() {
 
 function drawStampedImage(img, targetCanvas) {
   const ctx  = targetCanvas.getContext('2d');
-  const maxW = 1080;
+  const maxW = 2048;
   const scale = img.width > maxW ? maxW / img.width : 1;
   targetCanvas.width  = Math.round(img.width  * scale);
   targetCanvas.height = Math.round(img.height * scale);
@@ -528,14 +528,17 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.fillRect(0, H - barH, W, 2);
   if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, barH, mapTileImg, mapTilePin);
   const textMaxW = (W - mapSz - pX * 2);
-  ctx.font = `bold ${sz}px Courier New, monospace`;
+  ctx.font = `bold ${sz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
   ctx.textBaseline = 'top';
+  ctx.shadowColor   = 'rgba(0,0,0,0.95)';
+  ctx.shadowBlur    = Math.max(3, Math.round(sz * 0.15));
+  ctx.shadowOffsetX = 1;
+  ctx.shadowOffsetY = 1;
   lines.forEach((line, i) => {
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
-    ctx.fillText(line, pX + 1, H - barH + pY + i * lH + 1, textMaxW);
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#f1f5f9';
     ctx.fillText(line, pX, H - barH + pY + i * lH, textMaxW);
   });
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
   ctx.font = `${Math.round(sz * 0.75)}px sans-serif`;
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.textAlign = 'right';
@@ -618,94 +621,148 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function drawCard(ctx, W, H, sz, padX, padY, showMap) {
-  const now = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
-  const cardW = Math.round(W * 0.9);
-  const cardX = Math.round((W - cardW) / 2);
-  const mapSz = showMap ? Math.round(W * 0.22) : 0;
-  
-  let title = '';
+  const FONT    = `system-ui, -apple-system, 'Segoe UI', Arial, sans-serif`;
+  const now     = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
+  const accentH = Math.max(4, Math.round(sz * 0.15));
+  const mapPad  = Math.round(padY * 0.5);
+  const cardW   = Math.round(W * 0.88);
+  const cardX   = Math.round((W - cardW) / 2);
+  const mapSz   = showMap ? Math.round(cardW * 0.28) : 0;
+  const textAreaW = cardW - (showMap ? mapSz + padX * 2.5 : 0) - padX * 2;
+
+  // ── Text content ──────────────────────────────────────────
+  let cityLine = '';
   let fullAddr = '';
   if (chk('tog-address') && addressData) {
     const locArr = [addressData.city || addressData.road, addressData.state, addressData.country].filter(Boolean);
-    title = locArr.join(', ');
-    if (addressData.country && addressData.country.toLowerCase() === 'india') title += ' 🇮🇳';
+    cityLine = locArr.join(', ');
+    if (addressData.country && addressData.country.toLowerCase() === 'india') cityLine += ' \uD83C\uDDEE\uD83C\uDDF3';
     fullAddr = [addressData.road, addressData.city, addressData.state, addressData.postcode, addressData.country].filter(Boolean).join(', ');
+  } else if (gpsData) {
+    cityLine = `${fmt(Math.abs(gpsData.lat), 4)}\u00B0 ${fmt(Math.abs(gpsData.lng), 4)}\u00B0`;
   } else {
-    title = 'Location Unknown';
+    cityLine = 'Location Unknown';
   }
-  
-  let coords = '';
-  if (chk('tog-coords') && gpsData) {
-    coords = `Lat ${gpsData.lat.toFixed(6)}° Long ${gpsData.lng.toFixed(6)}°`;
-  }
-  
+
+  let coordLine = '';
+  if (chk('tog-coords') && gpsData)
+    coordLine = `Lat ${fmt(Math.abs(gpsData.lat), 6)}\u00B0  Long ${fmt(Math.abs(gpsData.lng), 6)}\u00B0`;
+
   let dateStr = '';
   if (chk('tog-datetime')) {
-    const opts = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'shortOffset' };
-    dateStr = now.toLocaleDateString('en-GB', opts).replace(',', '');
+    try {
+      const opts = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'shortOffset' };
+      dateStr = now.toLocaleString('en-GB', opts).replace(/,\s+/, ' ');
+    } catch (_) { dateStr = `${fmtDate(now)}  ${fmtTime(now)}`; }
   }
-  
-  ctx.font = `bold ${Math.round(sz * 1.1)}px sans-serif`;
-  const titleLines = wrapText(ctx, title, cardW - mapSz - padX * 3);
-  ctx.font = `${Math.round(sz * 0.85)}px sans-serif`;
-  const addrLines = fullAddr ? wrapText(ctx, fullAddr, cardW - mapSz - padX * 3) : [];
-  
-  const textH = (titleLines.length * sz * 1.3) + (addrLines.length * sz * 1.1) + (coords ? sz * 1.2 : 0) + (dateStr ? sz * 1.2 : 0);
-  const contentH = Math.max(textH, mapSz);
-  const cardH = contentH + padY * 2;
-  const cardY = H - cardH - padY;
-  
-  // Branding Badge
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  const badgeW = sz * 9;
-  const badgeH = sz * 1.8;
-  const badgeX = cardX + cardW - badgeW;
-  const badgeY = cardY - badgeH;
-  roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 8);
+
+  const extraLines = buildExtraLines();
+
+  // ── Font sizes ─────────────────────────────────────────────
+  const titleSz = Math.round(sz * 1.15);
+  const bodySz  = Math.round(sz * 0.88);
+  const smSz    = Math.round(sz * 0.80);
+
+  ctx.font = `bold ${titleSz}px ${FONT}`;
+  const titleLines = cityLine ? wrapText(ctx, cityLine, textAreaW) : [];
+  ctx.font = `${bodySz}px ${FONT}`;
+  const addrLines  = fullAddr ? wrapText(ctx, fullAddr, textAreaW) : [];
+
+  const textH =
+    titleLines.length * titleSz * 1.35 +
+    (addrLines.length ? addrLines.length * bodySz * 1.25 + bodySz * 0.4 : 0) +
+    (coordLine ? smSz * 1.35 : 0) +
+    (dateStr   ? smSz * 1.35 : 0) +
+    extraLines.length * smSz * 1.2 +
+    padY * 0.4;
+
+  const contentH = Math.max(textH, showMap ? mapSz : 0);
+  const cardH    = Math.round(contentH + padY * 2 + accentH);
+  const cardY    = H - cardH - Math.round(H * 0.018);
+
+  // ── Card: shadow + white background ───────────────────────
+  ctx.save();
+  ctx.shadowColor   = 'rgba(0,0,0,0.42)';
+  ctx.shadowBlur    = Math.round(sz * 1.4);
+  ctx.shadowOffsetY = Math.round(sz * 0.35);
+  ctx.fillStyle     = 'rgba(255,255,255,0.97)';
+  roundRect(ctx, cardX, cardY, cardW, cardH, Math.round(sz * 0.5));
   ctx.fill();
-  
-  ctx.fillStyle = '#fff';
-  ctx.font = `${Math.round(sz * 0.75)}px sans-serif`;
-  ctx.fillText('📷 GeoStamper', badgeX + padX, badgeY + badgeH * 0.65);
-  
-  // Card Background
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  roundRect(ctx, cardX, cardY, cardW, cardH, 12);
+  ctx.restore();
+
+  // Blue accent bar at top
+  ctx.fillStyle = '#0ea5e9';
+  roundRect(ctx, cardX, cardY, cardW, accentH, Math.round(sz * 0.5));
   ctx.fill();
-  
-  if (showMap) {
-    drawMapThumb(ctx, cardX + padX, cardY + padY, mapSz, mapSz, mapTileImg, mapTilePin);
+
+  // ── Map thumbnail (left side) ─────────────────────────────
+  if (showMap && mapSz > 0) {
+    const mX    = cardX + mapPad;
+    const mY    = cardY + accentH + mapPad;
+    const mSide = Math.min(mapSz, cardH - accentH - mapPad * 2);
+    drawMapThumb(ctx, mX, mY, mSide, mSide, mapTileImg, mapTilePin);
   }
-  
-  let textY = cardY + padY + sz;
-  const textX = cardX + padX + mapSz + (showMap ? padX : 0);
-  const textMaxW = cardX + cardW - textX - padX;
-  
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.round(sz * 1.1)}px sans-serif`;
-  titleLines.forEach(l => { ctx.fillText(l, textX, textY, textMaxW); textY += sz * 1.3; });
-  
-  textY += sz * 0.2;
-  ctx.font = `${Math.round(sz * 0.85)}px sans-serif`;
-  addrLines.forEach(l => { ctx.fillText(l, textX, textY, textMaxW); textY += sz * 1.1; });
-  
-  textY += sz * 0.3;
-  if (coords) { ctx.fillText(coords, textX, textY, textMaxW); textY += sz * 1.2; }
-  if (dateStr) { ctx.fillText(dateStr, textX, textY, textMaxW); textY += sz * 1.2; }
-  
-  // Render additional stamp fields (altitude, weather, speed, etc.) from toggles
-  const extraLines = buildStampLines().filter(l => {
-    // Skip address, coords, date — already rendered above
-    return !l.startsWith('📍') && !l.startsWith('🌐') && !l.startsWith('🕐');
-  });
-  ctx.font = `${Math.round(sz * 0.8)}px Courier New, monospace`;
-  ctx.fillStyle = '#94a3b8';
-  extraLines.forEach(l => {
-    if (textY < cardY + cardH - sz) {
-      ctx.fillText(l, textX, textY, textMaxW);
-      textY += sz * 1.1;
-    }
-  });
+
+  // ── Text ──────────────────────────────────────────────────
+  const textX = cardX + padX * 0.9 + (showMap && mapSz > 0 ? mapSz + mapPad : 0);
+  let   textY = cardY + accentH + padY * 0.7;
+  ctx.textBaseline = 'top';
+
+  if (titleLines.length) {
+    ctx.font      = `bold ${titleSz}px ${FONT}`;
+    ctx.fillStyle = '#111827';
+    titleLines.forEach(l => { ctx.fillText(l, textX, textY, textAreaW); textY += titleSz * 1.35; });
+    textY += bodySz * 0.25;
+  }
+
+  if (addrLines.length) {
+    ctx.font      = `${bodySz}px ${FONT}`;
+    ctx.fillStyle = '#374151';
+    addrLines.forEach(l => { ctx.fillText(l, textX, textY, textAreaW); textY += bodySz * 1.25; });
+    textY += bodySz * 0.2;
+  }
+
+  if (coordLine) {
+    ctx.font      = `${smSz}px ${FONT}`;
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText(coordLine, textX, textY, textAreaW);
+    textY += smSz * 1.35;
+  }
+
+  if (dateStr) {
+    ctx.font      = `${smSz}px ${FONT}`;
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText(dateStr, textX, textY, textAreaW);
+    textY += smSz * 1.35;
+  }
+
+  if (extraLines.length) {
+    ctx.font      = `${smSz}px ${FONT}`;
+    ctx.fillStyle = '#9ca3af';
+    extraLines.forEach(l => {
+      if (textY + smSz < cardY + cardH - mapPad) {
+        ctx.fillText(l, textX, textY, textAreaW);
+        textY += smSz * 1.2;
+      }
+    });
+  }
+
+  ctx.textBaseline = 'alphabetic';
+
+  // ── Branding badge (top-right of card) ────────────────────
+  ctx.font = `bold ${smSz}px ${FONT}`;
+  const bLabel = 'GPS Cam Stamp';
+  const bW     = ctx.measureText(bLabel).width + padX;
+  const bH     = Math.round(smSz * 1.55);
+  const bX     = cardX + cardW - bW - 5;
+  const bY     = cardY + accentH + 5;
+  ctx.fillStyle = '#0ea5e9';
+  roundRect(ctx, bX, bY, bW, bH, 4);
+  ctx.fill();
+  ctx.fillStyle    = '#fff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(bLabel, bX + padX * 0.45, bY + bH * 0.5);
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
@@ -728,25 +785,34 @@ function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
   const pinX = x + (pin.px / 256) * w;
   const pinY = y + (pin.py / 256) * h;
   
-  // Draw an actual map pin marker instead of a giant circle
+  // Map pin — clearly visible with drop shadow
   const minDim = Math.min(w, h);
-  const r = Math.max(3, Math.round(minDim * 0.015));
+  const r = Math.max(8, Math.round(minDim * 0.06));
+  ctx.save();  // shadow save (nested inside clip save)
+  ctx.shadowColor   = 'rgba(0,0,0,0.55)';
+  ctx.shadowBlur    = Math.max(4, Math.round(r * 0.6));
+  ctx.shadowOffsetY = 2;
   ctx.beginPath();
-  ctx.arc(pinX, pinY - r*1.5, r, Math.PI, 0); // top dome
-  ctx.lineTo(pinX, pinY + r*1.5);             // tip
+  ctx.arc(pinX, pinY - r * 1.5, r, Math.PI, 0); // dome
+  ctx.lineTo(pinX, pinY + r * 1.5);              // tip
   ctx.closePath();
   ctx.fillStyle = '#ef4444';
   ctx.fill();
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = Math.max(1.5, minDim * 0.015);
-  ctx.stroke();
-  
-  // Small dot inside pin
+  ctx.restore();  // clear shadow
+  // White outline
   ctx.beginPath();
-  ctx.arc(pinX, pinY - r*1.5, r*0.4, 0, Math.PI * 2);
+  ctx.arc(pinX, pinY - r * 1.5, r, Math.PI, 0);
+  ctx.lineTo(pinX, pinY + r * 1.5);
+  ctx.closePath();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = Math.max(1.5, Math.round(r * 0.28));
+  ctx.stroke();
+  // White dot inside dome
+  ctx.beginPath();
+  ctx.arc(pinX, pinY - r * 1.5, r * 0.35, 0, Math.PI * 2);
   ctx.fillStyle = '#fff';
   ctx.fill();
-  ctx.restore();
+  ctx.restore();  // un-clip (original save at top of drawMapThumb)
   // Border
   ctx.strokeStyle = 'rgba(14,165,233,0.7)';
   ctx.lineWidth = 1.5;
@@ -769,52 +835,77 @@ function buildStampLines() {
 
   if (chk('tog-address') && addressData) {
     const addr = [addressData.road, addressData.city, addressData.state, addressData.country].filter(Boolean).join(', ');
-    if (addr) lines.push(truncate('📍 ' + addr, 52));
+    if (addr) lines.push(truncate(addr, 60));
   }
 
   if (chk('tog-coords') && gpsData) {
     if (coordFmt === 'dms') {
-      lines.push(`🌐 ${toDMS(gpsData.lat,'lat')}  ${toDMS(gpsData.lng,'lng')}`);
+      lines.push(`${toDMS(gpsData.lat,'lat')}  ${toDMS(gpsData.lng,'lng')}`);
     } else {
-      const lat = fmt(gpsData.lat, 5) + (gpsData.lat >= 0 ? 'N' : 'S');
-      const lng = fmt(Math.abs(gpsData.lng), 5) + (gpsData.lng >= 0 ? 'E' : 'W');
-      lines.push(`🌐 ${lat}  ${lng}`);
+      lines.push(`Lat ${fmt(Math.abs(gpsData.lat), 6)}\u00B0  Long ${fmt(Math.abs(gpsData.lng), 6)}\u00B0`);
     }
   }
 
   if (chk('tog-altitude') && gpsData && gpsData.altitude != null) {
-    lines.push(`⬆ Altitude: ${Math.round(gpsData.altitude)} m`);
+    lines.push(`ALT: ${Math.round(gpsData.altitude)} m`);
   }
 
   if (chk('tog-datetime')) {
-    lines.push(`🕐 ${fmtDate(now)}  ${fmtTime(now)}`);
+    lines.push(`${fmtDate(now)}  ${fmtTime(now)}`);
   }
 
   if (chk('tog-accuracy') && gpsData) {
-    lines.push(`◎ Accuracy: ±${Math.round(gpsData.accuracy || 0)} m`);
+    lines.push(`ACC: \u00B1${Math.round(gpsData.accuracy || 0)} m`);
   }
 
   if (chk('tog-compass') && gpsData && gpsData.heading != null) {
-    lines.push(`🧭 ${headingLabel(gpsData.heading)} (${Math.round(gpsData.heading)}°)`);
+    lines.push(`DIR: ${headingLabel(gpsData.heading)} (${Math.round(gpsData.heading)}\u00B0)`);
   }
 
   if (chk('tog-speed') && gpsData && gpsData.speed != null) {
     const spd = tempUnit === 'F'
       ? Math.round(gpsData.speed * 2.237) + ' mph'
       : Math.round(gpsData.speed * 3.6) + ' km/h';
-    lines.push(`⚡ Speed: ${spd}`);
+    lines.push(`SPD: ${spd}`);
   }
 
   if (chk('tog-weather') && weatherData) {
     const wTemp = tempUnit === 'F'
-      ? Math.round(weatherData.temp * 9/5 + 32) + '°F'
-      : weatherData.temp + '°C';
-    lines.push(`${weatherData.icon} ${wTemp}  ${weatherData.condition}`);
+      ? Math.round(weatherData.temp * 9/5 + 32) + '\u00B0F'
+      : weatherData.temp + '\u00B0C';
+    lines.push(`${wTemp}  ${weatherData.condition}`);
   }
 
   const note = document.getElementById('customNote')?.value?.trim();
-  if (note) lines.push('✦ ' + note);
+  if (note) lines.push('NOTE: ' + note);
 
+  return lines;
+}
+
+// Extra stamp fields only (altitude, accuracy, compass, speed, weather, note)
+// Used by drawCard which renders address / coords / date directly
+function buildExtraLines() {
+  const lines = [];
+  if (chk('tog-altitude') && gpsData && gpsData.altitude != null)
+    lines.push(`ALT: ${Math.round(gpsData.altitude)} m`);
+  if (chk('tog-accuracy') && gpsData)
+    lines.push(`ACC: \u00B1${Math.round(gpsData.accuracy || 0)} m`);
+  if (chk('tog-compass') && gpsData && gpsData.heading != null)
+    lines.push(`DIR: ${headingLabel(gpsData.heading)} (${Math.round(gpsData.heading)}\u00B0)`);
+  if (chk('tog-speed') && gpsData && gpsData.speed != null) {
+    const spd = tempUnit === 'F'
+      ? Math.round(gpsData.speed * 2.237) + ' mph'
+      : Math.round(gpsData.speed * 3.6) + ' km/h';
+    lines.push(`SPD: ${spd}`);
+  }
+  if (chk('tog-weather') && weatherData) {
+    const wTemp = tempUnit === 'F'
+      ? Math.round(weatherData.temp * 9/5 + 32) + '\u00B0F'
+      : weatherData.temp + '\u00B0C';
+    lines.push(`${wTemp}  ${weatherData.condition}`);
+  }
+  const note = document.getElementById('customNote')?.value?.trim();
+  if (note) lines.push('NOTE: ' + note);
   return lines;
 }
 
