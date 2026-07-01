@@ -935,6 +935,14 @@ function headingLabel(h) {
 // ── Download ──────────────────────────────────────────────
 function downloadPhoto() {
   if (!capturedImage) return; // nothing to download
+  // Fire GA4 event for stamp generation
+  if (typeof gtag === 'function') {
+    gtag('event', 'stamp_generated', {
+      event_category: 'engagement',
+      event_label: currentTemplate,
+      value: batchImages.length
+    });
+  }
   if (batchImages.length <= 1) {
     // Single download
     downloadCanvas(stampCanvas, (batchImages[0]?.filename || 'photo') + '_gpsstamped.jpg');
