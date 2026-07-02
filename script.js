@@ -982,6 +982,20 @@ function downloadCanvas(canvas, filename) {
   a.href     = dataUrl;
   a.download = filename;
   a.click();
+  
+  if (navigator.share) {
+    setTimeout(() => {
+        const shareBtn = document.createElement('button');
+        shareBtn.textContent = 'Share stamped photo';
+        shareBtn.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#3b82f6; color:white; border:none; padding:12px 24px; border-radius:30px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); font-weight:600; font-family:sans-serif; cursor:pointer; z-index:10000; transition: transform 0.2s;';
+        shareBtn.onclick = () => {
+            navigator.share({ title: 'GPS Cam Stamp', text: 'Check out my stamped photo!', url: window.location.href }).catch(console.error);
+            shareBtn.remove();
+        };
+        document.body.appendChild(shareBtn);
+        setTimeout(() => shareBtn.remove(), 10000);
+    }, 1000);
+  }
 }
 
 // ── UI Helpers ────────────────────────────────────────────
