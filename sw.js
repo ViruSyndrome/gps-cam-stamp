@@ -1,12 +1,10 @@
-const CACHE = 'gpscamstamp-v6';
+const CACHE = 'gpscamstamp-v8';
 const PRECACHE = [
   '/',
-  '/index.html?v=6',
-  '/style.css?v=6',
-  '/script.js?v=6',
+  '/style.css?v=7',
+  '/script.js?v=8',
   '/manifest.json',
-  '/assets/favicon.svg',
-  '/assets/og-image.webp'
+  '/assets/favicon.svg'
 ];
 
 self.addEventListener('install', e => {
@@ -37,7 +35,19 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-first for app shell and static assets
+  // Network-first for page navigations — never serve stale HTML
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
