@@ -248,7 +248,9 @@ async function startCamera() {
       video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false
     });
+    if (!camVideo) return; // guard: DOM not ready
     camVideo.srcObject = camStream;
+    try { await camVideo.play(); } catch (_) {} // explicit play for Android
   } catch (err) {
     // Camera unavailable (desktop without cam, permission denied)
     const panel = document.getElementById('panel-camera');
@@ -529,13 +531,13 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.fillRect(0, H - barH, W, 2);
   if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, barH, mapTileImg, mapTilePin);
   const textMaxW = (W - mapSz - pX * 2);
-  ctx.font = `bold ${sz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
   ctx.textBaseline = 'top';
   ctx.shadowColor   = 'rgba(0,0,0,0.95)';
   ctx.shadowBlur    = Math.max(3, Math.round(sz * 0.15));
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
   lines.forEach((line, i) => {
+    ctx.font = `${i === 0 ? 'bold ' : ''}${sz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#f1f5f9';
     ctx.fillText(line, pX, H - barH + pY + i * lH, textMaxW);
   });
@@ -561,11 +563,12 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.lineWidth = 1.2;
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.stroke();
-  ctx.font = `${minSz}px Courier New, monospace`;
+  ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
+    ctx.font = `${i === 0 ? 'bold ' : ''}${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#cbd5e1';
-    ctx.fillText(line, x + pX * 0.6, y + pY * 0.75 + i * minLH);
+    ctx.fillText(line, x + pX * 0.75, y + pY * 0.75 + i * minLH);
   });
   if (showMap) {
     const mapSz = tagH;
@@ -602,8 +605,13 @@ function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.fillRect(W - panelW, Math.round(sz * 2.2), panelW, 1);
   if (showMap) {
     const mapY = Math.round(startY + lines.length * lH * 1.2 + sz * 0.5);
-    const mapH = H - mapY;
-    if (mapH > 20) drawMapThumb(ctx, W - panelW, mapY, panelW, mapH, mapTileImg, mapTilePin);
+    const mapAvailH = H - mapY - pY;
+    if (mapAvailH > 20) {
+      // Constrain to square so map doesn't stretch
+      const mapSide = Math.min(panelW - pX * 2, mapAvailH);
+      const mapOffX = Math.round((panelW - mapSide) / 2); // center in panel
+      drawMapThumb(ctx, W - panelW + mapOffX, mapY, mapSide, mapSide, mapTileImg, mapTilePin);
+    }
   }
 }
 
@@ -628,8 +636,9 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap) {
   const mapPad  = Math.round(padY * 0.5);
   const cardW   = Math.round(W * 0.88);
   const cardX   = Math.round((W - cardW) / 2);
-  const mapSz   = showMap ? Math.round(cardW * 0.28) : 0;
-  const textAreaW = cardW - (showMap ? mapSz + padX * 2.5 : 0) - padX * 2;
+  const mapSz   = showMap ? Math.round(cardW * 0.30) : 0;
+  const mapGap  = showMap ? Math.round(padX * 1.5) : 0; // generous gap between map and text
+  const textAreaW = cardW - (showMap ? mapSz + mapGap : 0) - padX * 2;
 
   // ── Text content ──────────────────────────────────────────
   let cityLine = '';
@@ -705,7 +714,7 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap) {
   }
 
   // ── Text ──────────────────────────────────────────────────
-  const textX = cardX + padX * 0.9 + (showMap && mapSz > 0 ? mapSz + mapPad : 0);
+  const textX = cardX + padX + (showMap && mapSz > 0 ? mapSz + mapGap : 0);
   let   textY = cardY + accentH + padY * 0.7;
   ctx.textBaseline = 'top';
 
