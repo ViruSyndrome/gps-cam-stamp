@@ -566,7 +566,7 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
-    ctx.font = `${i === 0 ? 'bold ' : ''}${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+    ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     ctx.fillStyle = i === 0 ? '#38bdf8' : '#cbd5e1';
     ctx.fillText(line, x + pX * 0.75, y + pY * 0.75 + i * minLH);
   });
