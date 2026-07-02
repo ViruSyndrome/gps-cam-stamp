@@ -139,6 +139,15 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2959862133855422" crossorigin="anonymous"></script>
   <script src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
+  <script>
+    Sentry.onLoad(function() {
+      Sentry.init({
+        tracesSampleRate: 0.1,
+        replaysSessionSampleRate: 0.05,
+        replaysOnErrorSampleRate: 1.0,
+      });
+    });
+  </script>
 
   <!-- Network footer styles are handled in style.css -->
 
