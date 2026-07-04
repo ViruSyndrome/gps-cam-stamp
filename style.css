@@ -450,7 +450,7 @@ img { max-width: 100%; display: block; }
 .tmpl-btn {
   background: var(--surface); border: 1px solid var(--border);
   color: var(--text-muted); border-radius: 8px;
-  padding: 0.45rem 0.5rem; font-size: 0.82rem; font-weight: 600;
+  min-height: 44px; padding: 10px 12px; font-size: 0.85rem; font-weight: 600;
   cursor: pointer; transition: all 0.2s; text-align: center;
 }
 .tmpl-btn.active {
