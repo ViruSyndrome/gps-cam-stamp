@@ -24,9 +24,9 @@
   ],
   "screenshots": [
     {
-      "src": "assets/og-image.png",
+      "src": "assets/og-image.webp",
       "sizes": "1200x630",
-      "type": "image/png",
+      "type": "image/webp",
       "label": "GPS Cam Stamp — stamp photos with GPS location"
     }
   ]

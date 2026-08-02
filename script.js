@@ -215,9 +215,11 @@ async function fetchMapTile(lat, lng) {
     const blobUrl = URL.createObjectURL(blob);
     const img     = new Image();
     img.onload    = () => {
+      URL.revokeObjectURL(blobUrl);
       mapTileImg = img;
       if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
     };
+    img.onerror = () => URL.revokeObjectURL(blobUrl);
     img.src = blobUrl;
   } catch (_) {
     // Map tile unavailable (offline/CORS) — stamp works without thumbnail
@@ -396,7 +398,8 @@ function parseApp1(view, start) {
       const count = readUint32(eOff + 4);
       const valOff = eOff + 8;
       if (type === 5) { // RATIONAL
-        const dataOff = count > 1 || true ? readUint32(valOff) : valOff;
+        // RATIONAL is 8 bytes, never fits the 4-byte inline field — always stored at offset
+        const dataOff = readUint32(valOff);
         const readRat = (o) => {
           const n = view.getUint32(tiffStart + o, littleEndian);
           const d = view.getUint32(tiffStart + o + 4, littleEndian);
