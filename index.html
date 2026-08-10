@@ -209,6 +209,8 @@
               onclick="switchTab('camera')">📷 Camera</button>
       <button class="tab-btn" id="tab-upload" role="tab" aria-selected="false"
               onclick="switchTab('upload')">⬆ Upload</button>
+      <button class="tab-btn" id="tab-gallery" role="tab" aria-selected="false"
+              onclick="switchTab('gallery')">🖼️ My Photos</button>
     </div>
 
     <!-- GPS status bar -->
@@ -240,6 +242,27 @@
           <p class="drop-hint">JPG · PNG · WEBP · Select multiple for batch stamping</p>
         </div>
       </label>
+    </div>
+
+    <!-- Gallery panel -->
+    <div class="panel hidden" id="panel-gallery" role="tabpanel">
+      <div class="gallery-toolbar">
+        <input type="text" id="gallerySearch" placeholder="Filter by label…"
+               class="gallery-search" oninput="renderGallery()" aria-label="Filter saved photos by label">
+        <select id="gallerySort" class="gallery-sort" onchange="renderGallery()" aria-label="Sort saved photos">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="label">By Label</option>
+        </select>
+        <span id="galleryCount" class="gallery-count"></span>
+        <span id="galleryStorage" class="gallery-storage"></span>
+      </div>
+      <div id="galleryGrid" class="gallery-grid"></div>
+      <div id="galleryEmpty" class="gallery-empty">
+        <div class="gallery-empty-icon" aria-hidden="true">📷</div>
+        <p>No saved photos yet</p>
+        <p class="gallery-empty-hint">Stamp a photo and it'll appear here automatically.</p>
+      </div>
     </div>
 
     <!-- Preview + controls (shown after capture/upload) -->

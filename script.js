@@ -493,7 +493,7 @@ function redrawStamp() {
 
 function drawStampedImage(img, targetCanvas) {
   const ctx  = targetCanvas.getContext('2d');
-  const maxW = 2048;
+  const maxW = (navigator.deviceMemory && navigator.deviceMemory < 4) ? 2048 : 4096;
   const scale = img.width > maxW ? maxW / img.width : 1;
   targetCanvas.width  = Math.round(img.width  * scale);
   targetCanvas.height = Math.round(img.height * scale);
@@ -958,6 +958,8 @@ function downloadPhoto() {
   if (batchImages.length <= 1) {
     // Single download
     downloadCanvas(stampCanvas, (batchImages[0]?.filename || 'photo') + '_gpsstamped.jpg');
+    // Auto-save to gallery
+    saveToGalleryAfterDownload(stampCanvas);
   } else {
     // Batch — download each with a delay to avoid browser blocking
     batchImages.forEach(({ img, filename }, i) => {
@@ -965,6 +967,7 @@ function downloadPhoto() {
         const c = document.createElement('canvas');
         drawStampedImage(img, c);
         downloadCanvas(c, filename + '_gpsstamped.jpg');
+        saveToGalleryAfterDownload(c);
       }, i * 400);
     });
   }
@@ -1004,17 +1007,23 @@ function downloadCanvas(canvas, filename) {
 // ── UI Helpers ────────────────────────────────────────────
 function switchTab(tab) {
   currentTab = tab;
-  ['camera', 'upload'].forEach(t => {
-    document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
+  ['camera', 'upload', 'gallery'].forEach(t => {
+    const panel = document.getElementById('panel-' + t);
+    if (panel) panel.classList.toggle('hidden', t !== tab);
     const btn = document.getElementById('tab-' + t);
-    btn.classList.toggle('active', t === tab);
-    btn.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+    if (btn) {
+      btn.classList.toggle('active', t === tab);
+      btn.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+    }
   });
   if (tab === 'camera') startCamera(); else stopCamera();
-  // Reset preview
-  previewWrap.classList.add('hidden');
-  capturedImage = null;
-  batchImages = [];
+  if (tab === 'gallery') renderGallery();
+  // Reset preview when switching to camera/upload
+  if (tab !== 'gallery') {
+    previewWrap.classList.add('hidden');
+    capturedImage = null;
+    batchImages = [];
+  }
 }
 
 function setTemplate(name) {
@@ -1127,3 +1136,266 @@ function wrapText(ctx, text, maxWidth) {
 }
 
 
+
+// ══════════════════════════════════════════════════════════
+// ══ MY PHOTOS — IndexedDB Gallery ═══════════════════════
+// ══════════════════════════════════════════════════════════
+
+const GALLERY_DB_NAME    = 'gpscamstamp-photos';
+const GALLERY_DB_VERSION = 1;
+const GALLERY_STORE      = 'photos';
+let _galleryDB = null;
+let _sessionLabel = '';  // remembered label for this session
+
+// ── Open / create database ─────────────────────────────────
+function openGalleryDB() {
+  if (_galleryDB) return Promise.resolve(_galleryDB);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(GALLERY_DB_NAME, GALLERY_DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(GALLERY_STORE)) {
+        const store = db.createObjectStore(GALLERY_STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('label', 'label', { unique: false });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+    };
+    req.onsuccess = (e) => { _galleryDB = e.target.result; resolve(_galleryDB); };
+    req.onerror   = ()  => { console.warn('[Gallery] IndexedDB not available'); reject(req.error); };
+  });
+}
+
+// ── Generate a small thumbnail ─────────────────────────────
+function generateThumbnail(canvas) {
+  return new Promise((resolve) => {
+    const THUMB_W = 240;
+    const ratio = canvas.height / canvas.width;
+    const tc = document.createElement('canvas');
+    tc.width  = THUMB_W;
+    tc.height = Math.round(THUMB_W * ratio);
+    tc.getContext('2d').drawImage(canvas, 0, 0, tc.width, tc.height);
+    tc.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
+  });
+}
+
+// ── Save a photo entry ─────────────────────────────────────
+async function savePhotoToDB(canvas, label) {
+  try {
+    const db = await openGalleryDB();
+    const [thumbBlob, fullBlob] = await Promise.all([
+      generateThumbnail(canvas),
+      new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', 0.92))
+    ]);
+    const entry = {
+      blob:      fullBlob,
+      thumbnail: thumbBlob,
+      label:     label || 'Unlabelled',
+      coords:    gpsData ? { lat: gpsData.lat, lng: gpsData.lng } : null,
+      address:   addressData ? (addressData.road || addressData.display_name || '') : '',
+      template:  currentTemplate,
+      timestamp: new Date().toISOString(),
+      width:     canvas.width
+    };
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(GALLERY_STORE, 'readwrite');
+      tx.objectStore(GALLERY_STORE).add(entry);
+      tx.oncomplete = () => resolve();
+      tx.onerror    = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.warn('[Gallery] Save failed:', e);
+  }
+}
+
+// ── Load all photos ────────────────────────────────────────
+async function loadAllPhotos() {
+  try {
+    const db = await openGalleryDB();
+    return new Promise((resolve) => {
+      const tx    = db.transaction(GALLERY_STORE, 'readonly');
+      const store = tx.objectStore(GALLERY_STORE);
+      const req   = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror   = () => resolve([]);
+    });
+  } catch (e) {
+    return [];
+  }
+}
+
+// ── Delete a photo ─────────────────────────────────────────
+async function deleteGalleryPhoto(id) {
+  try {
+    const db = await openGalleryDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(GALLERY_STORE, 'readwrite');
+      tx.objectStore(GALLERY_STORE).delete(id);
+      tx.oncomplete = () => { renderGallery(); resolve(); };
+      tx.onerror    = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.warn('[Gallery] Delete failed:', e);
+  }
+}
+
+// ── Re-download a saved photo ──────────────────────────────
+function redownloadPhoto(id) {
+  openGalleryDB().then(db => {
+    const tx  = db.transaction(GALLERY_STORE, 'readonly');
+    const req = tx.objectStore(GALLERY_STORE).get(id);
+    req.onsuccess = () => {
+      const entry = req.result;
+      if (!entry || !entry.blob) return;
+      const url = URL.createObjectURL(entry.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ts = (entry.timestamp || new Date().toISOString()).replace(/[:.]/g, '-').slice(0, 19);
+      a.download = 'GPSCamStamp_' + ts + '.jpg';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    };
+  });
+}
+
+// ── Render gallery grid ────────────────────────────────────
+async function renderGallery() {
+  const grid    = document.getElementById('galleryGrid');
+  const empty   = document.getElementById('galleryEmpty');
+  const countEl = document.getElementById('galleryCount');
+  const storeEl = document.getElementById('galleryStorage');
+  if (!grid) return;
+
+  let photos = await loadAllPhotos();
+
+  // Filter
+  const query = (document.getElementById('gallerySearch')?.value || '').toLowerCase().trim();
+  if (query) {
+    photos = photos.filter(p => (p.label || '').toLowerCase().includes(query) ||
+                                (p.address || '').toLowerCase().includes(query));
+  }
+
+  // Sort
+  const sortBy = document.getElementById('gallerySort')?.value || 'newest';
+  if (sortBy === 'newest') {
+    photos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  } else if (sortBy === 'oldest') {
+    photos.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  } else if (sortBy === 'label') {
+    photos.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+  }
+
+  // Count & storage
+  if (countEl) countEl.textContent = photos.length + ' photo' + (photos.length !== 1 ? 's' : '');
+  const totalBytes = photos.reduce((sum, p) => {
+    return sum + (p.blob ? p.blob.size : 0) + (p.thumbnail ? p.thumbnail.size : 0);
+  }, 0);
+  if (storeEl) {
+    if (totalBytes > 1048576) {
+      storeEl.textContent = (totalBytes / 1048576).toFixed(1) + ' MB';
+    } else {
+      storeEl.textContent = Math.round(totalBytes / 1024) + ' KB';
+    }
+  }
+
+  // Empty state
+  if (photos.length === 0) {
+    grid.innerHTML = '';
+    grid.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  grid.style.display = '';
+  if (empty) empty.style.display = 'none';
+
+  // Render cards
+  grid.innerHTML = photos.map(p => {
+    const thumbUrl = p.thumbnail ? URL.createObjectURL(p.thumbnail) : '';
+    const dateStr  = p.timestamp ? new Date(p.timestamp).toLocaleDateString(undefined, {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : '';
+    const label   = escapeHTML(p.label || 'Unlabelled');
+    const address = escapeHTML(p.address || (p.coords ? p.coords.lat.toFixed(4) + ', ' + p.coords.lng.toFixed(4) : 'No location'));
+    return `<div class="gallery-card">
+      ${thumbUrl ? `<img class="gallery-thumb" src="${thumbUrl}" alt="${label}" loading="lazy">` : '<div class="gallery-thumb"></div>'}
+      <div class="gallery-meta">
+        <div class="gallery-label">${label}</div>
+        <div class="gallery-addr">📍 ${address}</div>
+        <div class="gallery-date">${dateStr}</div>
+      </div>
+      <div class="gallery-actions">
+        <button onclick="redownloadPhoto(${p.id})">⬇ Save</button>
+        <button class="btn-delete" onclick="confirmDeletePhoto(${p.id})">🗑 Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── HTML escaper ───────────────────────────────────────────
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Delete confirmation ────────────────────────────────────
+function confirmDeletePhoto(id) {
+  if (confirm('Delete this photo from your local library?')) {
+    deleteGalleryPhoto(id);
+  }
+}
+
+// ── Label prompt modal ─────────────────────────────────────
+function promptForLabel() {
+  return new Promise((resolve) => {
+    // If we already have a session label, reuse it
+    if (_sessionLabel) { resolve(_sessionLabel); return; }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'label-overlay';
+    overlay.innerHTML = `
+      <div class="label-modal">
+        <h3>📋 Label this photo</h3>
+        <p>Add a label like a property address, site name, or project to group your photos.</p>
+        <input type="text" id="labelInput" placeholder="e.g. 123 Main St, Site B" maxlength="80" autofocus>
+        <div class="modal-btns">
+          <button class="btn-skip" id="labelSkip">Skip</button>
+          <button class="btn-save" id="labelSave">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const input = document.getElementById('labelInput');
+    const save  = document.getElementById('labelSave');
+    const skip  = document.getElementById('labelSkip');
+
+    function finish(val) {
+      _sessionLabel = val;
+      overlay.remove();
+      resolve(val);
+    }
+    save.onclick = () => finish(input.value.trim() || 'Unlabelled');
+    skip.onclick = () => finish('Unlabelled');
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') finish(input.value.trim() || 'Unlabelled');
+    });
+    // Focus the input after modal renders
+    requestAnimationFrame(() => input.focus());
+  });
+}
+
+// ── Auto-save after download ───────────────────────────────
+async function saveToGalleryAfterDownload(canvas) {
+  try {
+    const label = await promptForLabel();
+    await savePhotoToDB(canvas, label);
+    // Update gallery badge count on tab
+    const photos = await loadAllPhotos();
+    const tabBtn = document.getElementById('tab-gallery');
+    if (tabBtn && photos.length > 0) {
+      tabBtn.textContent = '🖼️ My Photos (' + photos.length + ')';
+    }
+  } catch (e) {
+    // Silently fail — don't block the download flow
+    console.warn('[Gallery] Auto-save failed:', e);
+  }
+}
