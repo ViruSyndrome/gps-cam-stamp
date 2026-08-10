@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.gpscamstamp.com/sitemap.xml
+Sitemap: https://gpscamstamp.com/sitemap.xml
 
 # AI crawlers
 User-agent: GPTBot
@@ -14,4 +14,4 @@ User-agent: PerplexityBot
 Allow: /
 
 # llms.txt
-# https://www.gpscamstamp.com/llms.txt
+# https://gpscamstamp.com/llms.txt
