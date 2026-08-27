@@ -510,6 +510,7 @@ function applyExifData(exif) {
 function showPreview() {
   previewWrap.classList.remove('hidden');
   redrawStamp();
+  setTimeout(() => previewWrap.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 }
 
 function redrawStamp() {
@@ -580,11 +581,6 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
     ctx.fillText(line, pX, H - barH + pY + i * lH, textMaxW);
   });
   ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
-  ctx.font = `${Math.round(sz * 0.75)}px sans-serif`;
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.textAlign = 'right';
-  ctx.fillText('gpscamstamp.com', W - mapSz - pX, H - barH + pY);
-  ctx.textAlign = 'left';
 }
 
 // Minimal — text tag in bottom-left, map thumbnail in bottom-right
@@ -592,7 +588,14 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   const isLight = document.getElementById('themeToggle')?.value === 'light';
   const minSz = Math.max(10, Math.round(sz * 0.85));
   const minLH = Math.round(minSz * 1.5);
-  const tagW  = Math.round(W * (showMap ? 0.48 : 0.52));
+  
+  ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+  let maxTextW = 0;
+  lines.forEach(line => maxTextW = Math.max(maxTextW, ctx.measureText(line).width));
+  
+  const minTagW = Math.round(W * (showMap ? 0.48 : 0.52));
+  const tagW  = Math.max(minTagW, Math.round(maxTextW + pX * 1.8));
+  
   const tagH  = Math.max(lines.length * minLH + pY * 1.5, showMap ? Math.round(sz * 4) : 0);
   const x = pX, y = H - tagH - pY;
   ctx.fillStyle = isLight ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.65)';
@@ -602,7 +605,6 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.lineWidth = 1.2;
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.stroke();
-  ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
     ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
@@ -618,7 +620,14 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
 // Pro — side panel on right with branded header and map thumbnail at bottom
 function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   const isLight = document.getElementById('themeToggle')?.value === 'light';
-  const panelW = Math.round(W * 0.38);
+  
+  ctx.font = `${sz}px Courier New, monospace`;
+  let maxTextW = 0;
+  lines.forEach(line => maxTextW = Math.max(maxTextW, ctx.measureText(line).width));
+  
+  const minPanelW = Math.round(W * 0.38);
+  const panelW = Math.max(minPanelW, Math.round(maxTextW + pX * 2.2));
+  
   const mapSz  = showMap ? Math.min(panelW - pX * 2, Math.round(W * 0.28)) : 0;
   ctx.fillStyle = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(8,14,26,0.85)';
   ctx.fillRect(W - panelW, 0, panelW, H);
@@ -1085,8 +1094,10 @@ function resetTool() {
   capturedImage = null;
   batchImages = [];
   document.getElementById('customNote').value = '';
+  document.getElementById('projectName').value = '';
   if (currentTab === 'camera') startCamera();
   else document.getElementById('fileInput').value = '';
+  document.getElementById('tool').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function toggleFaq(btn) {
