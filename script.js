@@ -493,7 +493,7 @@ function redrawStamp() {
 
 function drawStampedImage(img, targetCanvas) {
   const ctx  = targetCanvas.getContext('2d');
-  const maxW = (navigator.deviceMemory && navigator.deviceMemory < 4) ? 2048 : 4096;
+  const maxW = 1920; // Downscale to 1080p width to prevent iOS Safari from crashing due to memory limits
   const scale = img.width > maxW ? maxW / img.width : 1;
   targetCanvas.width  = Math.round(img.width  * scale);
   targetCanvas.height = Math.round(img.height * scale);
