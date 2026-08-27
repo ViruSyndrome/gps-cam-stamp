@@ -232,7 +232,7 @@ function latLngToTilePixel(lat, lng, zoom) {
 }
 
 async function fetchMapTile(lat, lng) {
-  const zoom = 16;
+  const zoom = 18; // Increased from 16 for a more zoomed-in street/building level view
   const { tx, ty, px, py } = latLngToTilePixel(lat, lng, zoom);
   mapTilePin = { px, py };
   try {
