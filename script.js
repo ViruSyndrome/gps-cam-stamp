@@ -18,6 +18,7 @@ let batchImages    = [];     // [{img, filename}] for batch mode
 let mapTileImg  = null;   // OSM tile Image for map thumbnail
 let mapTilePin  = null;   // {px, py} pin pixel position within 256×256 tile
 let appLogoImg  = null;   // Real SVG logo for the stamp
+let customLogoImg = null; // User uploaded custom logo
 
 const initLogo = new Image();
 initLogo.onload = () => { appLogoImg = initLogo; };
@@ -39,8 +40,33 @@ document.addEventListener('DOMContentLoaded', () => {
   stampCanvas = document.getElementById('stampCanvas');
   previewWrap = document.getElementById('previewWrap');
 
+  const logoInput = document.getElementById('customLogoInput');
+  if (logoInput) {
+    logoInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const img = new Image();
+          img.onload = () => { customLogoImg = img; redrawStamp(); };
+          img.src = evt.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+        document.getElementById('clearLogoBtn').style.display = 'block';
+      }
+    });
+  }
+
   detectLocaleDefaults();
 });
+
+window.clearCustomLogo = function() {
+  customLogoImg = null;
+  const logoInput = document.getElementById('customLogoInput');
+  if (logoInput) logoInput.value = '';
+  const clearBtn = document.getElementById('clearLogoBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  redrawStamp();
+};
 
 window.addEventListener('load', async () => {
   await startCamera();
@@ -526,22 +552,31 @@ function drawStamp(ctx, W, H) {
 
 // Classic — dark bar at bottom, map thumbnail on right when enabled
 function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
+  const isLight = document.getElementById('themeToggle')?.value === 'light';
   const barH = Math.max(lines.length * lH + pY * 2, showMap ? Math.round(sz * 4) : 0);
   const mapSz = showMap ? barH : 0;
-  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  
+  ctx.fillStyle = isLight ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.72)';
   ctx.fillRect(0, H - barH, W, barH);
-  ctx.fillStyle = '#0ea5e9';
+  
+  ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
   ctx.fillRect(0, H - barH, W, 2);
+  
   if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, barH, mapTileImg, mapTilePin);
+  
   const textMaxW = (W - mapSz - pX * 2);
   ctx.textBaseline = 'top';
-  ctx.shadowColor   = 'rgba(0,0,0,0.95)';
-  ctx.shadowBlur    = Math.max(3, Math.round(sz * 0.15));
-  ctx.shadowOffsetX = 1;
-  ctx.shadowOffsetY = 1;
+  
+  if (!isLight) {
+    ctx.shadowColor   = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur    = Math.max(3, Math.round(sz * 0.15));
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+  }
+  
   lines.forEach((line, i) => {
     ctx.font = `${i === 0 ? 'bold ' : ''}${sz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
-    ctx.fillStyle = i === 0 ? '#38bdf8' : '#f1f5f9';
+    ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#1e293b') : (i === 0 ? '#38bdf8' : '#f1f5f9');
     ctx.fillText(line, pX, H - barH + pY + i * lH, textMaxW);
   });
   ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
@@ -554,15 +589,16 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
 
 // Minimal — text tag in bottom-left, map thumbnail in bottom-right
 function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
+  const isLight = document.getElementById('themeToggle')?.value === 'light';
   const minSz = Math.max(10, Math.round(sz * 0.85));
   const minLH = Math.round(minSz * 1.5);
   const tagW  = Math.round(W * (showMap ? 0.48 : 0.52));
   const tagH  = Math.max(lines.length * minLH + pY * 1.5, showMap ? Math.round(sz * 4) : 0);
   const x = pX, y = H - tagH - pY;
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillStyle = isLight ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.65)';
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(14,165,233,0.6)';
+  ctx.strokeStyle = isLight ? 'rgba(2,132,199,0.8)' : 'rgba(14,165,233,0.6)';
   ctx.lineWidth = 1.2;
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.stroke();
@@ -570,7 +606,7 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
     ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
-    ctx.fillStyle = i === 0 ? '#38bdf8' : '#cbd5e1';
+    ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#334155') : (i === 0 ? '#38bdf8' : '#cbd5e1');
     ctx.fillText(line, x + pX * 0.75, y + pY * 0.75 + i * minLH);
   });
   if (showMap) {
@@ -581,19 +617,21 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
 
 // Pro — side panel on right with branded header and map thumbnail at bottom
 function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
+  const isLight = document.getElementById('themeToggle')?.value === 'light';
   const panelW = Math.round(W * 0.38);
   const mapSz  = showMap ? Math.min(panelW - pX * 2, Math.round(W * 0.28)) : 0;
-  ctx.fillStyle = 'rgba(8,14,26,0.85)';
+  ctx.fillStyle = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(8,14,26,0.85)';
   ctx.fillRect(W - panelW, 0, panelW, H);
-  ctx.fillStyle = '#0ea5e9';
+  ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
   ctx.fillRect(W - panelW, 0, panelW, Math.round(sz * 2.2));
   ctx.font = `bold ${Math.round(sz * 0.9)}px sans-serif`;
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#fff'; // header text is always white on blue
   ctx.textBaseline = 'middle';
-  if (appLogoImg) {
+  const displayLogo = customLogoImg || appLogoImg;
+  if (displayLogo) {
     const logoSz = Math.round(sz * 1.4);
-    ctx.drawImage(appLogoImg, W - panelW + pX, sz * 0.45, logoSz, logoSz);
-    ctx.fillText('GPS CAM STAMP', W - panelW + pX + logoSz + sz * 0.4, sz * 1.1);
+    ctx.drawImage(displayLogo, W - panelW + pX, sz * 0.45, logoSz, logoSz);
+    ctx.fillText(customLogoImg ? (document.getElementById('projectName')?.value?.trim() || 'PROJECT SITE') : 'GPS CAM STAMP', W - panelW + pX + logoSz + sz * 0.4, sz * 1.1);
   } else {
     ctx.fillText('🌍 GPS CAM STAMP', W - panelW + pX, sz * 1.1);
   }
@@ -601,7 +639,7 @@ function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.textBaseline = 'top';
   const startY = Math.round(sz * 2.5);
   lines.forEach((line, i) => {
-    ctx.fillStyle = i === 0 ? '#38bdf8' : '#94a3b8';
+    ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#334155') : (i === 0 ? '#38bdf8' : '#94a3b8');
     ctx.fillText(line, W - panelW + pX, startY + i * lH * 1.2);
   });
   ctx.fillStyle = 'rgba(14,165,233,0.2)';
@@ -889,6 +927,9 @@ function buildStampLines() {
     lines.push(`${wTemp}  ${weatherData.condition}`);
   }
 
+  const project = document.getElementById('projectName')?.value?.trim();
+  if (project) lines.push('PROJECT: ' + project);
+
   const note = document.getElementById('customNote')?.value?.trim();
   if (note) lines.push('NOTE: ' + note);
 
@@ -917,6 +958,9 @@ function buildExtraLines() {
       : weatherData.temp + '\u00B0C';
     lines.push(`${wTemp}  ${weatherData.condition}`);
   }
+  const project = document.getElementById('projectName')?.value?.trim();
+  if (project) lines.push('PROJECT: ' + project);
+
   const note = document.getElementById('customNote')?.value?.trim();
   if (note) lines.push('NOTE: ' + note);
   return lines;
