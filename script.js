@@ -554,8 +554,18 @@ function drawStamp(ctx, W, H) {
 // Classic — dark bar at bottom, map thumbnail on right when enabled
 function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   const isLight = document.getElementById('themeToggle')?.value === 'light';
-  const barH = Math.max(lines.length * lH + pY * 2, showMap ? Math.round(sz * 4) : 0);
-  const mapSz = showMap ? barH : 0;
+  
+  ctx.font = `${sz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+  const mapSz = showMap ? Math.round(sz * 4) : 0;
+  const textMaxW = (W - mapSz - pX * 2);
+  
+  const wrappedLines = [];
+  lines.forEach(line => {
+    const wrapped = wrapText(ctx, line, textMaxW);
+    wrappedLines.push(...wrapped);
+  });
+  
+  const barH = Math.max(wrappedLines.length * lH + pY * 2, mapSz);
   
   ctx.fillStyle = isLight ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.72)';
   ctx.fillRect(0, H - barH, W, barH);
@@ -563,9 +573,8 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
   ctx.fillRect(0, H - barH, W, 2);
   
-  if (showMap) drawMapThumb(ctx, W - mapSz, H - barH, mapSz, barH, mapTileImg, mapTilePin);
+  if (showMap) drawMapThumb(ctx, W - barH, H - barH, barH, barH, mapTileImg, mapTilePin);
   
-  const textMaxW = (W - mapSz - pX * 2);
   ctx.textBaseline = 'top';
   
   if (!isLight) {
@@ -575,10 +584,10 @@ function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
     ctx.shadowOffsetY = 1;
   }
   
-  lines.forEach((line, i) => {
+  wrappedLines.forEach((line, i) => {
     ctx.font = `${i === 0 ? 'bold ' : ''}${sz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#1e293b') : (i === 0 ? '#38bdf8' : '#f1f5f9');
-    ctx.fillText(line, pX, H - barH + pY + i * lH, textMaxW);
+    ctx.fillText(line, pX, H - barH + pY + i * lH);
   });
   ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
 }
@@ -590,14 +599,18 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   const minLH = Math.round(minSz * 1.5);
   
   ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
-  let maxTextW = 0;
-  lines.forEach(line => maxTextW = Math.max(maxTextW, ctx.measureText(line).width));
   
-  const minTagW = Math.round(W * (showMap ? 0.48 : 0.52));
-  const tagW  = Math.max(minTagW, Math.round(maxTextW + pX * 1.8));
+  const tagW = Math.round(W * (showMap ? 0.48 : 0.52));
   
-  const tagH  = Math.max(lines.length * minLH + pY * 1.5, showMap ? Math.round(sz * 4) : 0);
+  const wrappedLines = [];
+  lines.forEach(line => {
+    const wrapped = wrapText(ctx, line, tagW - pX * 2);
+    wrappedLines.push(...wrapped);
+  });
+  
+  const tagH  = Math.max(wrappedLines.length * minLH + pY * 1.5, showMap ? Math.round(sz * 4) : 0);
   const x = pX, y = H - tagH - pY;
+  
   ctx.fillStyle = isLight ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.65)';
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.fill();
@@ -605,12 +618,14 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   ctx.lineWidth = 1.2;
   roundRect(ctx, x, y, tagW, tagH, 6);
   ctx.stroke();
+  
   ctx.textBaseline = 'top';
-  lines.forEach((line, i) => {
+  wrappedLines.forEach((line, i) => {
     ctx.font = `${minSz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#334155') : (i === 0 ? '#38bdf8' : '#cbd5e1');
     ctx.fillText(line, x + pX * 0.75, y + pY * 0.75 + i * minLH);
   });
+  
   if (showMap) {
     const mapSz = tagH;
     drawMapThumb(ctx, W - mapSz - pX, y, mapSz, mapSz, mapTileImg, mapTilePin);
@@ -621,47 +636,119 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
 function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
   const isLight = document.getElementById('themeToggle')?.value === 'light';
   
-  ctx.font = `${sz}px Courier New, monospace`;
-  let maxTextW = 0;
-  lines.forEach(line => maxTextW = Math.max(maxTextW, ctx.measureText(line).width));
+  const panelW = Math.max(250, Math.min(600, Math.round(W * 0.35)));
+  const mapSz  = showMap ? panelW - pX * 2 : 0;
   
-  const minPanelW = Math.round(W * 0.38);
-  const panelW = Math.max(minPanelW, Math.round(maxTextW + pX * 2.2));
-  
-  const mapSz  = showMap ? Math.min(panelW - pX * 2, Math.round(W * 0.28)) : 0;
   ctx.fillStyle = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(8,14,26,0.85)';
   ctx.fillRect(W - panelW, 0, panelW, H);
   ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
   ctx.fillRect(W - panelW, 0, panelW, Math.round(sz * 2.2));
   ctx.font = `bold ${Math.round(sz * 0.9)}px sans-serif`;
-  ctx.fillStyle = '#fff'; // header text is always white on blue
+  ctx.fillStyle = '#fff';
   ctx.textBaseline = 'middle';
+  
   const displayLogo = customLogoImg || appLogoImg;
+  const logoSz = Math.round(sz * 1.4);
+  const headerText = customLogoImg ? (document.getElementById('projectName')?.value?.trim() || 'PROJECT SITE') : 'GPS CAM STAMP';
+  
   if (displayLogo) {
-    const logoSz = Math.round(sz * 1.4);
     ctx.drawImage(displayLogo, W - panelW + pX, sz * 0.45, logoSz, logoSz);
-    ctx.fillText(customLogoImg ? (document.getElementById('projectName')?.value?.trim() || 'PROJECT SITE') : 'GPS CAM STAMP', W - panelW + pX + logoSz + sz * 0.4, sz * 1.1);
+    ctx.fillText(headerText, W - panelW + pX + logoSz + sz * 0.4, sz * 1.1);
   } else {
-    ctx.fillText('🌍 GPS CAM STAMP', W - panelW + pX, sz * 1.1);
+    ctx.fillText('🌍 ' + headerText, W - panelW + pX, sz * 1.1);
   }
+  
   ctx.font = `${sz}px Courier New, monospace`;
   ctx.textBaseline = 'top';
-  const startY = Math.round(sz * 2.5);
-  lines.forEach((line, i) => {
-    ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#334155') : (i === 0 ? '#38bdf8' : '#94a3b8');
-    ctx.fillText(line, W - panelW + pX, startY + i * lH * 1.2);
+  
+  const wrappedLines = [];
+  lines.forEach(line => {
+    const wrapped = wrapText(ctx, line, panelW - pX * 2.5);
+    wrappedLines.push(...wrapped);
   });
+  
+  const startY = Math.round(sz * 2.5);
+  wrappedLines.forEach((line, i) => {
+    ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#334155') : (i === 0 ? '#38bdf8' : '#94a3b8');
+    ctx.fillText(line, W - panelW + pX, startY + i * lH * 1.1);
+  });
+  
   ctx.fillStyle = 'rgba(14,165,233,0.2)';
   ctx.fillRect(W - panelW, Math.round(sz * 2.2), panelW, 1);
+  
   if (showMap) {
-    const mapY = Math.round(startY + lines.length * lH * 1.2 + sz * 0.5);
+    const mapY = Math.round(startY + wrappedLines.length * lH * 1.1 + sz * 0.5);
     const mapAvailH = H - mapY - pY;
     if (mapAvailH > 20) {
-      // Constrain to square so map doesn't stretch
       const mapSide = Math.min(panelW - pX * 2, mapAvailH);
-      const mapOffX = Math.round((panelW - mapSide) / 2); // center in panel
+      const mapOffX = Math.round((panelW - mapSide) / 2);
       drawMapThumb(ctx, W - panelW + mapOffX, mapY, mapSide, mapSide, mapTileImg, mapTilePin);
     }
+  }
+}
+
+function drawEnterprise(ctx, lines, W, H, sz, lH, pX, pY, showMap) {
+  const isLight = document.getElementById('themeToggle')?.value === 'light';
+  ctx.font = `${sz}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+  const compassW = Math.round(sz * 6.5); 
+  const mapW = showMap ? Math.round(sz * 5) : 0;
+  const textMaxW = W - compassW - mapW - (pX * 4);
+  
+  const wrappedLines = [];
+  lines.forEach(line => wrappedLines.push(...wrapText(ctx, line, textMaxW)));
+  const barH = Math.max(wrappedLines.length * lH + pY * 2.5, compassW + pY, mapW + pY * 2);
+  
+  ctx.fillStyle = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20,20,20,0.85)';
+  ctx.fillRect(0, H - barH, W, barH);
+  ctx.fillStyle = isLight ? '#0ea5e9' : '#38bdf8';
+  ctx.fillRect(0, H - barH, W, 2);
+  
+  const cx = pX + compassW / 2, cy = H - barH / 2;
+  const r = compassW * 0.4;
+  ctx.strokeStyle = isLight ? '#94a3b8' : '#64748b';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  
+  ctx.font = `bold ${Math.round(sz * 0.5)}px sans-serif`;
+  ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', cx, cy - r + sz * 0.7);
+  ctx.fillText('S', cx, cy + r - sz * 0.7);
+  ctx.fillText('E', cx + r - sz * 0.7, cy);
+  ctx.fillText('W', cx - r + sz * 0.7, cy);
+  
+  const headingStr = gpsData && gpsData.heading ? gpsData.heading.toFixed(0) + '°' : 'N/A';
+  ctx.font = `bold ${Math.round(sz * 0.9)}px sans-serif`;
+  ctx.fillStyle = isLight ? '#0f172a' : '#f8fafc';
+  ctx.fillText(headingStr, cx, cy);
+  
+  if (gpsData && typeof gpsData.heading !== 'undefined') {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((gpsData.heading * Math.PI) / 180);
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.moveTo(0, -r + sz*1.4); ctx.lineTo(sz*0.2, 0); ctx.lineTo(-sz*0.2, 0); ctx.fill();
+    ctx.restore();
+  }
+  
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  wrappedLines.forEach((line, i) => {
+    ctx.font = `${i === 0 ? 'bold ' : ''}${sz}px system-ui, -apple-system, sans-serif`;
+    ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#1e293b') : (i === 0 ? '#38bdf8' : '#f1f5f9');
+    ctx.fillText(line, compassW + pX * 2, H - barH + pY + i * lH);
+  });
+  
+  if (showMap) {
+     const mapX = W - mapW - pX;
+     const mapY = H - barH + (barH - mapW) / 2;
+     drawMapThumb(ctx, mapX, mapY, mapW, mapW, mapTileImg, mapTilePin);
+     
+     ctx.fillStyle = 'rgba(0,0,0,0.6)';
+     ctx.fillRect(mapX, mapY - sz * 1.5, mapW, sz * 1.5);
+     ctx.fillStyle = '#fff';
+     ctx.font = `${Math.round(sz*0.7)}px sans-serif`;
+     ctx.fillText('📷 GPS Cam Stamp', mapX + 4, mapY - sz * 1.5 + 4);
   }
 }
 
@@ -895,7 +982,7 @@ function buildStampLines() {
 
   if (chk('tog-address') && addressData) {
     const addr = [addressData.road, addressData.city, addressData.state, addressData.country].filter(Boolean).join(', ');
-    if (addr) lines.push(truncate(addr, 60));
+    if (addr) lines.push(addr);
   }
 
   if (chk('tog-coords') && gpsData) {
