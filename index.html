@@ -362,7 +362,7 @@
         <input class="custom-input" id="projectName" type="text"
                placeholder="Project/Site Name..."
                maxlength="40" oninput="redrawStamp()" aria-label="Project Name">
-        <select class="custom-input" id="themeToggle" onchange="redrawStamp()" style="width: auto; padding: 0 10px;">
+        <select class="custom-input" id="themeToggle" onchange="redrawStamp()" aria-label="Stamp theme" title="Stamp theme" style="width: auto; padding: 0 10px;">
           <option value="dark">Dark Theme (Standard)</option>
           <option value="light">Light Theme (For Bright Photos)</option>
         </select>
@@ -374,7 +374,7 @@
       </div>
       <div class="ctrl-row" style="display: flex; gap: 8px; align-items: center; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px; margin-bottom: 16px;">
         <span style="font-size: 0.85rem; color: #cbd5e1; white-space: nowrap;">Company Logo:</span>
-        <input type="file" id="customLogoInput" accept="image/png, image/jpeg" style="font-size: 0.8rem; color: #fff; width: 100%;">
+        <input type="file" id="customLogoInput" accept="image/png, image/jpeg" aria-label="Upload company logo" title="Upload company logo" style="font-size: 0.8rem; color: #fff; width: 100%;">
         <button onclick="clearCustomLogo()" style="background:transparent; border:1px solid #475569; color:#cbd5e1; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer; display:none;" id="clearLogoBtn">Clear</button>
       </div>
 
