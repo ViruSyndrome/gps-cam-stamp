@@ -43,9 +43,10 @@
 
   <!-- JSON-LD -->
   <script type="application/ld+json">
-  [
   {
     "@context": "https://schema.org",
+    "@graph": [
+  {
     "@type": "WebApplication",
     "name": "GPS Cam Stamp",
     "url": "https://gpscamstamp.com/",
@@ -67,7 +68,6 @@
     ]
   },
   {
-    "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [
       {
@@ -132,7 +132,8 @@
       }
     ]
   }
-  ]
+    ]
+  }
   </script>
 
   <link rel="stylesheet" href="style.css?v=7" />
