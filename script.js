@@ -1160,11 +1160,12 @@ function switchTab(tab) {
   if (tab === 'gallery') renderGallery();
   // Reset preview when switching to camera/upload
   if (tab !== 'gallery') {
-    previewWrap.classList.add('hidden');
+    if (previewWrap) previewWrap.classList.add('hidden');
     capturedImage = null;
     batchImages = [];
   }
 }
+window.switchTab = switchTab;
 
 function setTemplate(name) {
   currentTemplate = name;
@@ -1177,7 +1178,7 @@ function setTemplate(name) {
 }
 
 function resetTool() {
-  previewWrap.classList.add('hidden');
+  if (previewWrap) previewWrap.classList.add('hidden');
   capturedImage = null;
   batchImages = [];
   document.getElementById('customNote').value = '';
@@ -1227,6 +1228,18 @@ function installPWA() {
     if (btn) btn.classList.add('hidden');
   });
 }
+
+// Expose handlers used by inline HTML onclick attributes
+window.capturePhoto = capturePhoto;
+window.switchCamera = switchCamera;
+window.setTempUnit = setTempUnit;
+window.setCoordFmt = setCoordFmt;
+window.setDateFmt = setDateFmt;
+window.setTemplate = setTemplate;
+window.downloadPhoto = downloadPhoto;
+window.resetTool = resetTool;
+window.toggleFaq = toggleFaq;
+window.installPWA = installPWA;
 
 function haptic() {
   if (navigator.vibrate) navigator.vibrate(30);

@@ -207,12 +207,20 @@
     <!-- Camera / Upload tabs -->
     <div class="tool-tabs" role="tablist">
       <button class="tab-btn active" id="tab-camera" role="tab" aria-selected="true"
-              onclick="switchTab('camera')">📷 Camera</button>
+              type="button" data-tab="camera">📷 Camera</button>
       <button class="tab-btn" id="tab-upload" role="tab" aria-selected="false"
-              onclick="switchTab('upload')">⬆ Upload</button>
+              type="button" data-tab="upload">⬆ Upload</button>
       <button class="tab-btn" id="tab-gallery" role="tab" aria-selected="false"
-              onclick="switchTab('gallery')">🖼️ My Photos</button>
+              type="button" data-tab="gallery">🖼️ My Photos</button>
     </div>
+    <script>
+      // Bind tabs immediately so early clicks never throw before script.js loads.
+      document.querySelector('.tool-tabs').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-tab]');
+        if (!btn) return;
+        if (typeof window.switchTab === 'function') window.switchTab(btn.getAttribute('data-tab'));
+      });
+    </script>
 
     <!-- GPS status bar -->
     <div class="gps-bar" id="gpsBar" role="status" aria-live="polite">
@@ -651,7 +659,7 @@
   <p>© 2026 GPSCamStamp. All rights reserved.</p>
 </footer>
 
-<script src="script.js?v=9" defer></script>
+<script src="script.js?v=11" defer></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
