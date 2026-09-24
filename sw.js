@@ -1,8 +1,8 @@
-const CACHE = 'gpscamstamp-v13';
+const CACHE = 'gpscamstamp-v14';
 const PRECACHE = [
   '/',
-  '/style.css?v=13',
-  '/script.js?v=13',
+  '/style.css?v=14',
+  '/script.js?v=14',
   '/manifest.json',
   '/assets/favicon.svg'
 ];

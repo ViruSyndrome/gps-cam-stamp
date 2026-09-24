@@ -84,9 +84,13 @@ img { max-width: 100%; display: block; }
 .hero {
   padding: 3rem 1.5rem 2rem;
   max-width: 1140px; margin: 0 auto;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "copy tool";
+  gap: 3rem;
+  align-items: start;
 }
-.hero-text { padding-top: 1rem; }
+.hero-text { grid-area: copy; padding-top: 1rem; }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 6px;
   background: var(--accent-glow); border: 1px solid var(--border-2);
@@ -119,6 +123,7 @@ img { max-width: 100%; display: block; }
 
 /* ===== TOOL CARD ===== */
 .tool-card {
+  grid-area: tool;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -609,8 +614,15 @@ img { max-width: 100%; display: block; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; gap: 2rem; }
-  .hero-text { padding-top: 0; }
+  .hero {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0.75rem 1rem 1.25rem;
+    gap: 1.25rem;
+  }
+  .hero-text { order: 2; margin-top: 0; width: 100%; padding-top: 0; }
+  .tool-card { order: 1; width: 100% !important; max-width: 100% !important; }
   .features-grid { grid-template-columns: 1fr 1fr; }
   .use-cases-grid { grid-template-columns: 1fr 1fr; }
   .steps { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
@@ -683,13 +695,6 @@ img { max-width: 100%; display: block; }
   .network-footer { display: none !important; }
   .ios-prompt { display: none !important; }
   body { background: var(--bg); }
-}
-
-/* MOBILE HERO SWAP */
-@media (max-width: 900px) {
-  .hero { display: flex; flex-direction: column; width: 100%; padding-left: 1rem; padding-right: 1rem; }
-  .hero-text { order: 2; margin-top: 1.5rem; width: 100%; }
-  .tool-card { order: 1; width: 100% !important; max-width: 100% !important; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
