@@ -22,7 +22,7 @@ let customLogoImg = null; // User uploaded custom logo
 
 const initLogo = new Image();
 initLogo.onload = () => { appLogoImg = initLogo; };
-initLogo.src = 'assets/favicon.svg';
+initLogo.src = 'assets/favicon-64.png';
 
 let weatherData = null;   // {temp, unit, condition, icon}
 let tempUnit    = 'C';    // 'C' | 'F' — auto-detected from locale/country
