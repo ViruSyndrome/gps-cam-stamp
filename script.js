@@ -73,15 +73,17 @@ window.addEventListener('load', async () => {
   requestGPS();
   setupUpload();
   syncToggleStyles();
+  updateCompassAvailability();
   
   const sampleImg = new Image();
   sampleImg.onload = () => {
     if (!capturedImage) {
       capturedImage = sampleImg;
-      gpsData = { lat: 40.7580, lng: -73.9855, altitude: 12.5, accuracy: 5, _exifDate: new Date() };
+      gpsData = { lat: 40.7580, lng: -73.9855, altitude: 12.5, accuracy: 5, heading: 42, _exifDate: new Date() };
       addressData = { city: "New York", suburb: "Manhattan", road: "Broadway", country: "United States" };
       weatherData = { temp: 22, unit: tempUnit, condition: "Sunny", icon: "☀️" };
       updateFmtUI();
+      updateCompassAvailability();
       redrawStamp();
     }
   };
@@ -108,7 +110,7 @@ function onGPSSuccess(pos) {
     lng:      pos.coords.longitude,
     altitude: pos.coords.altitude,
     accuracy: pos.coords.accuracy,
-    heading:  pos.coords.heading,
+    heading:  (pos.coords.heading != null && !Number.isNaN(pos.coords.heading)) ? pos.coords.heading : (gpsData && gpsData.heading != null ? gpsData.heading : null),
     speed:    pos.coords.speed
   };
   const lat = gpsData.lat.toFixed(5);
@@ -117,6 +119,8 @@ function onGPSSuccess(pos) {
   fetchAddress(gpsData.lat, gpsData.lng);
   fetchMapTile(gpsData.lat, gpsData.lng);
   fetchWeather(gpsData.lat, gpsData.lng);
+  updateCompassAvailability();
+  if (capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) redrawStamp();
 }
 
 function onGPSError(err) {
@@ -126,6 +130,78 @@ function onGPSError(err) {
     3: 'Location request timed out. Try again outdoors.'
   };
   setGPSStatus('denied', msgs[err.code] || 'Location error');
+  updateCompassAvailability();
+}
+
+// Compass heading from DeviceOrientation (geolocation.heading is often null when stationary)
+let compassListening = false;
+function updateCompassAvailability() {
+  const hint = document.getElementById('compassHint');
+  const label = document.getElementById('compassToggleLabel');
+  const hasHeading = gpsData && gpsData.heading != null && !Number.isNaN(gpsData.heading);
+  if (hint) {
+    hint.textContent = hasHeading
+      ? `${Math.round(gpsData.heading)}°`
+      : (compassListening ? 'Move phone to calibrate' : 'Needs phone sensors');
+  }
+  if (label) label.classList.toggle('is-unavailable', !hasHeading);
+}
+
+async function onCompassToggle(cb) {
+  if (!cb.checked) {
+    updateCompassAvailability();
+    return;
+  }
+  await ensureCompassHeading();
+  updateCompassAvailability();
+  redrawStamp();
+}
+window.onCompassToggle = onCompassToggle;
+
+async function ensureCompassHeading() {
+  if (gpsData && gpsData.heading != null && !Number.isNaN(gpsData.heading)) return true;
+  if (typeof DeviceOrientationEvent === 'undefined') {
+    const hint = document.getElementById('compassHint');
+    if (hint) hint.textContent = 'Not supported on this device';
+    return false;
+  }
+  try {
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const perm = await DeviceOrientationEvent.requestPermission();
+      if (perm !== 'granted') {
+        const hint = document.getElementById('compassHint');
+        if (hint) hint.textContent = 'Sensor permission denied';
+        return false;
+      }
+    }
+  } catch (_) {
+    return false;
+  }
+  if (!compassListening) {
+    compassListening = true;
+    window.addEventListener('deviceorientationabsolute', onDeviceOrientation, true);
+    window.addEventListener('deviceorientation', onDeviceOrientation, true);
+  }
+  return true;
+}
+
+function onDeviceOrientation(e) {
+  let heading = null;
+  if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) {
+    heading = e.webkitCompassHeading;
+  } else if (e.absolute === true && typeof e.alpha === 'number' && e.alpha != null) {
+    heading = (360 - e.alpha) % 360;
+  } else if (typeof e.alpha === 'number' && e.alpha != null) {
+    heading = (360 - e.alpha) % 360;
+  }
+  if (heading == null || Number.isNaN(heading)) return;
+  if (!gpsData) gpsData = { lat: null, lng: null, altitude: null, accuracy: null, heading: null, speed: null };
+  const prev = gpsData.heading;
+  gpsData.heading = heading;
+  updateCompassAvailability();
+  if (document.getElementById('tog-compass')?.checked && capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) {
+    if (prev == null || Math.abs(prev - heading) >= 2) redrawStamp();
+  }
 }
 
 function setGPSStatus(state, text) {
@@ -269,8 +345,20 @@ async function fetchWeather(lat, lng) {
 }
 
 // ── Camera ────────────────────────────────────────────────
+function setCamPlaceholder(visible, message) {
+  const ph = document.getElementById('camPlaceholder');
+  if (!ph) return;
+  ph.classList.toggle('hidden', !visible);
+  if (message) {
+    const p = ph.querySelector('p');
+    if (p) p.innerHTML = message;
+  }
+}
+
 async function startCamera() {
   stopCamera();
+  setCamPlaceholder(true, 'Allow camera access to preview here, or switch to <strong>Upload</strong>.');
+  if (camVideo) camVideo.classList.remove('is-live');
   try {
     camStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -279,18 +367,24 @@ async function startCamera() {
     if (!camVideo) return; // guard: DOM not ready
     camVideo.srcObject = camStream;
     try { await camVideo.play(); } catch (_) {} // explicit play for Android
+    camVideo.classList.add('is-live');
+    setCamPlaceholder(false);
   } catch (err) {
-    // Camera unavailable (desktop without cam, permission denied)
-    const panel = document.getElementById('panel-camera');
-    if (panel) panel.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-muted)">
-      <div style="font-size:2.5rem;margin-bottom:1rem">📷</div>
-      <p>Camera not available or permission denied.<br>Use the <strong>Upload Photo</strong> tab instead.</p>
-    </div>`;
+    // Keep the structured panel; show a clear empty state instead of a black void
+    setCamPlaceholder(true, 'Camera not available or permission denied.<br>Use the <strong>Upload</strong> tab instead.');
+    if (camVideo) {
+      camVideo.srcObject = null;
+      camVideo.classList.remove('is-live');
+    }
   }
 }
 
 function stopCamera() {
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (camVideo) {
+    camVideo.srcObject = null;
+    camVideo.classList.remove('is-live');
+  }
 }
 
 function switchCamera() {

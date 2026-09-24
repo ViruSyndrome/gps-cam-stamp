@@ -136,13 +136,26 @@
   }
   </script>
 
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=12" />
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2959862133855422" crossorigin="anonymous"></script>
   <script src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
   <script>
     Sentry.onLoad(function() {
       Sentry.init({
+        ignoreErrors: [
+          "Script error.",
+          /Script error\.?/i,
+          /ResizeObserver loop/i,
+          /runtime\.sendMessage/i,
+          /Extension context invalidated/i,
+          /adsbygoogle/i,
+        ],
+        denyUrls: [
+          /pagead2\.googlesyndication\.com/i,
+          /googlesyndication\.com/i,
+          /googleadservices\.com/i,
+        ],
         tracesSampleRate: 0.1,
         replaysSessionSampleRate: 0.05,
         replaysOnErrorSampleRate: 1.0,
@@ -232,6 +245,10 @@
     <div class="panel" id="panel-camera" role="tabpanel">
       <div class="video-wrap">
         <video class="cam-video" id="camVideo" autoplay playsinline muted aria-label="Camera viewfinder"></video>
+        <div class="cam-placeholder" id="camPlaceholder">
+          <div class="cam-placeholder-icon" aria-hidden="true">📷</div>
+          <p>Allow camera access to preview here, or switch to <strong>Upload</strong>.</p>
+        </div>
         <div class="cam-overlay" aria-hidden="true"><div class="cam-grid"></div></div>
       </div>
       <div class="cam-controls">
@@ -318,9 +335,10 @@
             <input type="checkbox" id="tog-accuracy" onchange="syncToggleStyles();redrawStamp()">
             <div class="tog-dot"></div> Accuracy
           </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="tog-compass" onchange="syncToggleStyles();redrawStamp()">
-            <div class="tog-dot"></div> Compass
+          <label class="toggle-label" id="compassToggleLabel">
+            <input type="checkbox" id="tog-compass" onchange="onCompassToggle(this);syncToggleStyles();redrawStamp()">
+            <div class="tog-dot"></div>
+            <span>Compass<span class="tog-hint" id="compassHint">Needs phone sensors</span></span>
           </label>
           <label class="toggle-label">
             <input type="checkbox" id="tog-speed" onchange="syncToggleStyles();redrawStamp()">
@@ -659,7 +677,7 @@
   <p>© 2026 GPSCamStamp. All rights reserved.</p>
 </footer>
 
-<script src="script.js?v=11" defer></script>
+<script src="script.js?v=12" defer></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
