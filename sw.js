@@ -1,10 +1,11 @@
-const CACHE = 'gpscamstamp-v15';
+const CACHE = 'gpscamstamp-v16';
 const PRECACHE = [
   '/',
-  '/style.css?v=15',
-  '/script.js?v=15',
+  '/style.css?v=16',
+  '/script.js?v=16',
   '/manifest.json',
-  '/assets/favicon.svg'
+  '/assets/favicon.svg',
+  '/assets/logo-nav.png'
 ];
 
 self.addEventListener('install', e => {

@@ -1,29 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <!-- App icon rounded square background -->
-  <rect width="200" height="200" rx="44" fill="#080e1a"/>
-
-  <!-- Camera body -->
-  <rect x="14" y="58" width="172" height="112" rx="18" fill="#0d1525" stroke="rgba(14,165,233,0.5)" stroke-width="3"/>
-
-  <!-- Viewfinder bump top-left -->
-  <rect x="22" y="42" width="58" height="26" rx="9" fill="#0d1525" stroke="rgba(14,165,233,0.5)" stroke-width="3"/>
-
-  <!-- Status LED top-right -->
-  <circle cx="164" cy="55" r="7" fill="#0ea5e9"/>
-
-  <!-- GPS pin = the lens -->
-  <!-- Pin circle head -->
-  <circle cx="104" cy="106" r="38" fill="#0ea5e9"/>
-  <!-- Pin tip poking below camera body (implies location/GPS) -->
-  <path d="M 70,124 L 138,124 L 104,176 Z" fill="#0ea5e9"/>
-
-  <!-- Lens dark inner circle -->
-  <circle cx="104" cy="106" r="25" fill="#080e1a"/>
-
-  <!-- Lens aperture ring -->
-  <circle cx="104" cy="106" r="17" fill="none" stroke="rgba(14,165,233,0.6)" stroke-width="2.5"/>
-
-  <!-- Center focus dot -->
-  <circle cx="104" cy="106" r="7" fill="#0ea5e9"/>
-  <circle cx="104" cy="106" r="3" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="GPS Cam Stamp">
+  <defs>
+    <radialGradient id="lens" cx="42%" cy="38%" r="62%">
+      <stop offset="0%" stop-color="#3a4558"/>
+      <stop offset="55%" stop-color="#1a2030"/>
+      <stop offset="100%" stop-color="#0a0e16"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="45%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="pin" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="55%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+  <!-- Cyan outer ring -->
+  <circle cx="100" cy="100" r="96" fill="url(#ring)"/>
+  <circle cx="100" cy="100" r="82" fill="url(#lens)"/>
+  <!-- Lens rings -->
+  <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3"/>
+  <circle cx="100" cy="100" r="52" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+  <circle cx="100" cy="100" r="38" fill="#05080f"/>
+  <!-- Gloss arc on ring -->
+  <path d="M42 48 A70 70 0 0 1 158 48" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="4" stroke-linecap="round"/>
+  <!-- Orange location pin -->
+  <path d="M100 52 C78 52 62 70 62 90 C62 112 100 148 100 148 C100 148 138 112 138 90 C138 70 122 52 100 52 Z" fill="url(#pin)"/>
+  <ellipse cx="92" cy="72" rx="10" ry="6" fill="rgba(255,255,255,0.35)"/>
+  <circle cx="100" cy="90" r="16" fill="#0a0e16"/>
+  <circle cx="100" cy="90" r="6" fill="#f8fafc"/>
 </svg>
