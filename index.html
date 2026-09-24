@@ -136,7 +136,7 @@
   }
   </script>
 
-  <link rel="stylesheet" href="style.css?v=14" />
+  <link rel="stylesheet" href="style.css?v=15" />
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2959862133855422" crossorigin="anonymous"></script>
   <script src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
@@ -209,23 +209,25 @@
     </script>
 
     <!-- GPS status bar -->
-    <div class="gps-bar" id="gpsBar" role="status" aria-live="polite">
+    <div class="gps-bar idle" id="gpsBar" role="status" aria-live="polite">
       <div class="gps-dot"></div>
-      <span id="gpsStatus">Requesting location…</span>
+      <span id="gpsStatus">Camera &amp; location needed — tap Allow below</span>
     </div>
 
     <!-- Camera panel -->
     <div class="panel" id="panel-camera" role="tabpanel">
-      <div class="video-wrap">
+      <div class="video-wrap" id="videoWrap">
         <video class="cam-video" id="camVideo" autoplay playsinline muted aria-label="Camera viewfinder"></video>
         <div class="cam-placeholder" id="camPlaceholder">
           <div class="cam-placeholder-icon" aria-hidden="true">📷</div>
-          <p>Allow camera access to preview here, or switch to <strong>Upload</strong>.</p>
+          <p id="camPlaceholderText">This tool needs <strong>camera</strong> and <strong>location</strong> to stamp photos. Browsers only ask after you tap Allow.</p>
+          <button type="button" class="btn-perm" id="btnEnablePerms" onclick="enablePermissions()">Allow Camera &amp; Location</button>
+          <p class="cam-perm-note">GPS can take a few seconds outdoors. You can still use <strong>Upload</strong> anytime.</p>
         </div>
         <div class="cam-overlay" aria-hidden="true"><div class="cam-grid"></div></div>
       </div>
       <div class="cam-controls">
-        <button class="btn-capture" onclick="capturePhoto()">Capture Photo</button>
+        <button class="btn-capture" id="btnCapture" onclick="capturePhoto()">Capture Photo</button>
         <button class="btn-switch" onclick="switchCamera()" aria-label="Switch front/rear camera" title="Switch camera">🔄</button>
       </div>
     </div>
@@ -676,7 +678,7 @@
   <p>© 2026 GPSCamStamp. All rights reserved.</p>
 </footer>
 
-<script src="script.js?v=14" defer></script>
+<script src="script.js?v=15" defer></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));

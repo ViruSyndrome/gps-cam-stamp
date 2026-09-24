@@ -166,10 +166,12 @@ img { max-width: 100%; display: block; }
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
   background: var(--text-dim);
 }
+.gps-bar.idle .gps-dot { background: var(--accent); }
 .gps-bar.fetching .gps-dot { background: var(--warning); animation: pulse 1s infinite; }
 .gps-bar.found .gps-dot { background: var(--success); }
 .gps-bar.denied .gps-dot, .gps-bar.error .gps-dot { background: var(--danger); }
 .gps-bar.found { color: var(--text); }
+.gps-bar.idle { color: var(--text); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
 /* Panels */
@@ -198,15 +200,27 @@ img { max-width: 100%; display: block; }
 .cam-placeholder {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 0.5rem; padding: 1rem 1.25rem; text-align: center;
+  gap: 0.55rem; padding: 1rem 1.25rem; text-align: center;
   color: var(--text-muted); z-index: 1;
-  pointer-events: none;
+  pointer-events: auto;
   background: radial-gradient(ellipse at center, rgba(14,165,233,0.08), transparent 70%);
 }
 .cam-placeholder.hidden { display: none; }
 .cam-placeholder-icon { font-size: 2rem; line-height: 1; opacity: 0.95; }
-.cam-placeholder p { font-size: 0.88rem; max-width: 16rem; line-height: 1.45; color: #cbd5e1; }
+.cam-placeholder p { font-size: 0.88rem; max-width: 18rem; line-height: 1.45; color: #cbd5e1; margin: 0; }
 .cam-placeholder strong { color: var(--accent-2); }
+.cam-perm-note { font-size: 0.75rem !important; max-width: 17rem !important; color: var(--text-dim) !important; }
+.btn-perm {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: 0.15rem; padding: 0.7rem 1.15rem; min-height: 44px;
+  border: none; border-radius: 10px; cursor: pointer;
+  background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+  color: #04101c; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.01em;
+  box-shadow: 0 6px 18px rgba(14,165,233,0.28);
+}
+.btn-perm:active { transform: scale(0.98); }
+.btn-perm:disabled { opacity: 0.65; cursor: wait; }
+.btn-perm.hidden { display: none; }
 .cam-overlay {
   position: absolute; inset: 0; pointer-events: none; z-index: 2;
 }
