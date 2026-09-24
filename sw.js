@@ -2,7 +2,7 @@ const CACHE = 'gpscamstamp-v17';
 const PRECACHE = [
   '/',
   '/style.css?v=17',
-  '/script.js?v=16',
+  '/script.js?v=17',
   '/manifest.json',
   '/assets/favicon.svg',
   '/assets/logo-nav.png'

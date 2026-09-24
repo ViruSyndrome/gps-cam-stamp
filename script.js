@@ -871,76 +871,12 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass) {
   }
 }
 
-// Pro — portrait: branded bottom panel; landscape: side panel. Same font as other templates.
+// Pro — rival-style right side panel (GPS Map Camera Pro layout)
 function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass) {
   const isLight = document.getElementById('themeToggle')?.value === 'light';
   const heading = getHeadingDeg();
-  const portrait = H >= W * 1.05;
-
-  if (portrait) {
-    drawProBottom(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass, isLight, heading);
-  } else {
-    drawProSide(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass, isLight, heading);
-  }
-}
-
-function drawProBottom(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass, isLight, heading) {
-  const headerH = Math.round(sz * 1.85);
-  const compassSz = showCompass ? Math.round(sz * 4) : 0;
-  const mapSz = showMap ? Math.round(sz * 4.2) : 0;
-  const gap = Math.round(pX * 0.5);
-
-  ctx.font = `${sz}px ${STAMP_FONT}`;
-  const textMaxW = W - mapSz - compassSz - pX * 2.5 - gap;
-  const wrapped = [];
-  lines.forEach(line => wrapped.push(...wrapText(ctx, line, textMaxW)));
-  const bodyH = Math.max(wrapped.length * lH + pY * 1.5, mapSz, compassSz);
-  const barH = headerH + bodyH;
-
-  ctx.fillStyle = isLight ? 'rgba(255,255,255,0.94)' : 'rgba(8,14,26,0.88)';
-  ctx.fillRect(0, H - barH, W, barH);
-
-  ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
-  ctx.fillRect(0, H - barH, W, headerH);
-
-  const logoSz = Math.round(sz * 1.15);
-  const displayLogo = customLogoImg || appLogoImg;
-  const headerText = customLogoImg
-    ? (document.getElementById('projectName')?.value?.trim() || 'PROJECT SITE')
-    : BRAND_NAME;
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.round(sz * 0.85)}px ${STAMP_FONT}`;
-  ctx.textBaseline = 'middle';
-  let hx = pX;
-  if (displayLogo) {
-    try { ctx.drawImage(displayLogo, hx, H - barH + (headerH - logoSz) / 2, logoSz, logoSz); } catch (_) {}
-    hx += logoSz + sz * 0.35;
-  }
-  ctx.fillText(headerText, hx, H - barH + headerH / 2);
-
-  let rightX = W - pX;
-  const bodyTop = H - bodyH;
-  if (showMap) {
-    const m = Math.min(mapSz, bodyH - pY);
-    rightX -= m;
-    drawMapThumb(ctx, rightX, bodyTop + (bodyH - m) / 2, m, m, mapTileImg, mapTilePin);
-    rightX -= gap;
-  }
-  if (showCompass) {
-    const r = Math.min(compassSz, bodyH - pY) * 0.4;
-    drawCompassDial(ctx, rightX - compassSz / 2, bodyTop + bodyH / 2, r, heading, isLight);
-  }
-
-  ctx.textBaseline = 'top';
-  wrapped.forEach((line, i) => {
-    ctx.font = `${i === 0 ? 'bold ' : ''}${sz}px ${STAMP_FONT}`;
-    ctx.fillStyle = isLight ? (i === 0 ? '#0284c7' : '#1e293b') : (i === 0 ? '#7dd3fc' : '#e2e8f0');
-    ctx.fillText(line, pX, bodyTop + pY * 0.6 + i * lH);
-  });
-}
-
-function drawProSide(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass, isLight, heading) {
-  const panelW = Math.max(220, Math.min(480, Math.round(W * 0.32)));
+  // Slightly wider on tall phone shots so text/map still fit like rival apps
+  const panelW = Math.max(220, Math.min(520, Math.round(W * (H > W ? 0.36 : 0.32))));
   const headerH = Math.round(sz * 2.1);
   const compassSz = showCompass ? Math.round(Math.min(panelW - pX * 2, sz * 4.5)) : 0;
 
