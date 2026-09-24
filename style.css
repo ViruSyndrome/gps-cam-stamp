@@ -655,13 +655,26 @@ img { max-width: 100%; display: block; }
 }
 .cta-box h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
 .cta-box p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
-.btn-cta {
+/* a.btn-cta beats .guide-content a (which was painting accent text on accent bg) */
+a.btn-cta,
+.cta-box .btn-cta,
+.guide-content a.btn-cta {
   display: inline-block;
-  background: var(--accent); color: #fff;
+  background: var(--accent);
+  color: #04101c !important;
   padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 700;
-  font-size: 0.95rem; transition: background 0.2s;
+  font-size: 0.95rem; transition: background 0.2s, color 0.2s;
+  text-decoration: none;
 }
-.btn-cta:hover { background: var(--accent-2); color: #fff; }
+a.btn-cta:hover,
+a.btn-cta:focus,
+a.btn-cta:active,
+a.btn-cta:visited,
+.cta-box .btn-cta:hover,
+.guide-content a.btn-cta:hover {
+  background: var(--accent-2);
+  color: #04101c !important;
+}
 
 .info-box {
   background: var(--card); border-left: 3px solid var(--accent);
