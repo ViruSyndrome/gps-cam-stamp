@@ -774,24 +774,6 @@ function drawCompassDial(ctx, cx, cy, r, heading, isLight) {
   ctx.restore();
 }
 
-function drawBrandChip(ctx, x, y, fontPx, isLight) {
-  const label = BRAND_NAME;
-  ctx.font = `600 ${fontPx}px ${STAMP_FONT}`;
-  const padX = Math.round(fontPx * 0.55);
-  const padY = Math.round(fontPx * 0.35);
-  const tw = ctx.measureText(label).width;
-  const chipW = tw + padX * 2;
-  const chipH = fontPx + padY * 2;
-  ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
-  roundRect(ctx, x, y, chipW, chipH, Math.round(fontPx * 0.25));
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.fillText(label, x + padX, y + chipH / 2);
-  ctx.textBaseline = 'alphabetic';
-  return { w: chipW, h: chipH };
-}
 
 // Classic — dark bar at bottom, compass dial + map when enabled
 function drawClassic(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass) {
