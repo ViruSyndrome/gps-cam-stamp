@@ -347,8 +347,10 @@ async function fetchWeather(lat, lng) {
 // ── Camera ────────────────────────────────────────────────
 function setCamPlaceholder(visible, message) {
   const ph = document.getElementById('camPlaceholder');
+  const wrap = document.querySelector('#panel-camera .video-wrap');
   if (!ph) return;
   ph.classList.toggle('hidden', !visible);
+  if (wrap) wrap.classList.toggle('is-live', !visible);
   if (message) {
     const p = ph.querySelector('p');
     if (p) p.innerHTML = message;

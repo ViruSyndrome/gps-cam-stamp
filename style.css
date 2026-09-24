@@ -124,23 +124,27 @@ img { max-width: 100%; display: block; }
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 .tool-tabs {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: linear-gradient(180deg, #162338 0%, var(--surface) 100%);
 }
 .tab-btn {
   background: none; border: none; cursor: pointer;
-  padding: 0.85rem 1rem;
+  padding: 0.9rem 0.75rem;
   color: var(--text-muted); font-size: 0.9rem; font-weight: 600;
-  transition: all 0.2s;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
   border-bottom: 2px solid transparent;
+  letter-spacing: 0.01em;
 }
 .tab-btn.active {
-  color: var(--accent);
+  color: #fff;
   border-bottom-color: var(--accent);
-  background: var(--accent-glow);
+  background: linear-gradient(180deg, rgba(14,165,233,0.18), rgba(14,165,233,0.05));
 }
 .tab-btn:hover:not(.active) { color: var(--text); background: var(--card-2); }
 
@@ -170,30 +174,38 @@ img { max-width: 100%; display: block; }
 /* Camera panel */
 .video-wrap {
   position: relative;
-  background: linear-gradient(160deg, #0f172a 0%, #1e293b 55%, #0f172a 100%);
+  background: linear-gradient(160deg, #12203a 0%, #1a2b45 50%, #0f1a2e 100%);
   border-radius: var(--radius); overflow: hidden;
   aspect-ratio: 4/3;
   border: 1px solid var(--border);
+  transition: aspect-ratio 0.2s ease, min-height 0.2s ease;
+}
+.video-wrap:not(.is-live) {
+  aspect-ratio: auto;
+  min-height: 148px;
+  max-height: 180px;
 }
 .cam-video {
   width: 100%; height: 100%; object-fit: cover; display: block;
   background: transparent;
 }
-.cam-video.is-live { background: #000; }
+.video-wrap.is-live .cam-video { background: #000; min-height: 200px; }
 .cam-placeholder {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 0.6rem; padding: 1.25rem; text-align: center;
+  gap: 0.5rem; padding: 1rem 1.25rem; text-align: center;
   color: var(--text-muted); z-index: 1;
   pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(14,165,233,0.08), transparent 70%);
 }
 .cam-placeholder.hidden { display: none; }
-.cam-placeholder-icon { font-size: 2.4rem; line-height: 1; opacity: 0.9; }
-.cam-placeholder p { font-size: 0.9rem; max-width: 16rem; line-height: 1.45; }
+.cam-placeholder-icon { font-size: 2rem; line-height: 1; opacity: 0.95; }
+.cam-placeholder p { font-size: 0.88rem; max-width: 16rem; line-height: 1.45; color: #cbd5e1; }
 .cam-placeholder strong { color: var(--accent-2); }
 .cam-overlay {
   position: absolute; inset: 0; pointer-events: none; z-index: 2;
 }
+.video-wrap:not(.is-live) .cam-overlay { display: none; }
 .cam-grid {
   position: absolute; inset: 0;
   background-image:
@@ -626,9 +638,12 @@ img { max-width: 100%; display: block; }
   .footer-links { justify-content: center; }
   .tool-tabs { grid-template-columns: 1fr 1fr 1fr; }
   .tab-btn { font-size: 0.78rem; padding: 0.75rem 0.35rem; }
-  .video-wrap { aspect-ratio: 3/4; max-height: 52vh; }
+  .video-wrap.is-live { aspect-ratio: 3/4; max-height: 52vh; }
+  .video-wrap:not(.is-live) { min-height: 132px; max-height: 150px; }
   .canvas-container { max-height: 48vh; }
   #stampCanvas { max-height: 48vh; }
+  .tool-card { width: 100% !important; max-width: 100% !important; }
+  .hero { width: 100%; }
 }
 
 .step { pointer-events: none; cursor: default; }
@@ -672,9 +687,9 @@ img { max-width: 100%; display: block; }
 
 /* MOBILE HERO SWAP */
 @media (max-width: 900px) {
-  .hero { display: flex; flex-direction: column; }
-  .hero-text { order: 2; margin-top: 2rem; }
-  .tool-card { order: 1; width: 100%; }
+  .hero { display: flex; flex-direction: column; width: 100%; padding-left: 1rem; padding-right: 1rem; }
+  .hero-text { order: 2; margin-top: 1.5rem; width: 100%; }
+  .tool-card { order: 1; width: 100% !important; max-width: 100% !important; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
