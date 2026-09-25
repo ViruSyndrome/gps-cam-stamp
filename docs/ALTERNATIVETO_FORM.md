@@ -75,14 +75,17 @@ Local file: `GeoStamper/assets/alternativeto/icon-512.png` (also `icon-256.png`)
 
 Paste URLs (or upload the same files from disk):
 
-1. `https://www.gpscamstamp.com/assets/alternativeto/altto-01-tool-classic.jpg` — desktop tool + Classic stamp  
-2. `https://www.gpscamstamp.com/assets/alternativeto/altto-03-stamp-card.jpg` — Card template stamp  
-3. `https://www.gpscamstamp.com/assets/alternativeto/altto-04-stamp-classic.jpg` — Classic stamp + fields  
-4. `https://www.gpscamstamp.com/assets/alternativeto/altto-02-tool-pro.png` → use `.jpg` if present: `altto-02-tool-pro.jpg` — Pro template  
-5. `https://www.gpscamstamp.com/assets/alternativeto/altto-05-mobile.jpg` — mobile layout  
-6. `https://www.gpscamstamp.com/assets/alternativeto/altto-06-comparison.jpg` — vs GPS Map Camera comparison  
+1. `https://www.gpscamstamp.com/assets/alternativeto/altto-01-tool-classic.jpg` — desktop tool (1280×900) with Classic stamp filled in preview  
+2. `https://www.gpscamstamp.com/assets/alternativeto/altto-02-tool-pro.jpg` — Pro template stamp (side panel) close-up  
+3. `https://www.gpscamstamp.com/assets/alternativeto/altto-03-stamp-card.jpg` — Card template stamp close-up  
+4. `https://www.gpscamstamp.com/assets/alternativeto/altto-04-stamp-classic.jpg` — Classic template stamp close-up  
+5. `https://www.gpscamstamp.com/assets/alternativeto/altto-05-mobile.jpg` — phone-width layout (390 CSS px)  
+6. `https://www.gpscamstamp.com/assets/alternativeto/altto-06-comparison.jpg` — desktop comparison table (centered crop)
 
-All under 3MB.
+All under 3MB. Regenerated with Playwright at 1280 desktop / 390 mobile — not Cursor embedded-browser captures (those added empty side gutters).
+
+Local folder: `GeoStamper/assets/alternativeto/`  
+Re-capture: `python scripts/capture_altto.py`
 
 ### Videos
 
