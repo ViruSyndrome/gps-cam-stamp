@@ -344,6 +344,23 @@
         </div>
       </div>
 
+      <!-- Download options -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Download Options</div>
+        <div class="toggles-grid" role="group" aria-label="Download options">
+          <label class="toggle-label checked">
+            <input type="checkbox" id="tog-exif-write" checked onchange="syncToggleStyles()">
+            <div class="tog-dot"></div> Write GPS into file metadata (EXIF)
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="tog-full-res" onchange="syncToggleStyles()">
+            <div class="tog-dot"></div> Full resolution (no downscale)
+          </label>
+        </div>
+        <p style="margin:8px 0 0;font-size:0.78rem;color:#94a3b8;line-height:1.4;">Visible stamp source labels stay honest (Live GPS / From photo EXIF). EXIF write embeds coordinates in the JPEG file when enabled. Full resolution skips the ~1920px cap — may use more memory on phones.</p>
+        <p id="exifWriteNote" style="display:none;margin:8px 0 0;font-size:0.78rem;color:#fbbf24;line-height:1.4;" role="status"></p>
+      </div>
+
       <!-- Format settings -->
       <div class="ctrl-row">
         <div class="ctrl-label">Format Settings</div>
@@ -722,7 +739,8 @@
   </div>
 </footer>
 
-<script src="script.js?v=18" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="script.js?v=19" defer></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));

@@ -47,8 +47,9 @@ let currentTemplate = 'classic';
 let camStream      = null;
 let facingMode     = 'environment';
 let addressCache   = {};     // lat,lng → address to avoid repeat calls
-let batchImages    = [];     // [{img, filename}] for batch mode
+let batchImages    = [];     // [{img, filename, jpegBinary?}] for batch mode
 let mapTileImg  = null;   // Map tile Image for map thumbnail (Esri World Imagery)
+let sourceJpegBinary = null; // original uploaded JPEG binary string (for EXIF preserve)
 let mapTilePin  = null;   // {px, py} pin pixel position within 256×256 tile
 let appLogoImg  = null;   // Real SVG logo for the stamp
 let customLogoImg = null; // User uploaded custom logo
@@ -595,6 +596,7 @@ function capturePhoto() {
   if (quality.warn && !confirm(quality.msg)) return;
 
   showingDemo = false;
+  sourceJpegBinary = null;
   const canvas = document.createElement('canvas');
   canvas.width  = camVideo.videoWidth  || 1280;
   canvas.height = camVideo.videoHeight || 720;
@@ -602,7 +604,7 @@ function capturePhoto() {
   const img = new Image();
   img.onload = () => {
     capturedImage = img;
-    batchImages = [{ img, filename: 'photo' }];
+    batchImages = [{ img, filename: 'photo', jpegBinary: null }];
     showPreview();
   };
   img.src = canvas.toDataURL('image/jpeg', 0.92);
@@ -624,15 +626,31 @@ function setupUpload() {
   });
 }
 
+function arrayBufferToBinaryString(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return binary;
+}
+
+function isJpegFile(file) {
+  return file && (file.type === 'image/jpeg' || /\.jpe?g$/i.test(file.name || ''));
+}
+
 function handleFiles(files) {
   const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
   if (!imageFiles.length) return;
   showingDemo = false;
   batchImages = [];
+  sourceJpegBinary = null;
   let loaded = 0;
 
   const afterImagesReady = async () => {
     capturedImage = batchImages[0].img;
+    sourceJpegBinary = batchImages[0].jpegBinary || null;
     showPreview();
 
     const needLiveGps = () => {
@@ -664,8 +682,14 @@ function handleFiles(files) {
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
-      img.onload = () => {
-        batchImages.push({ img, filename: file.name.replace(/\.[^.]+$/, '') });
+      img.onload = async () => {
+        let jpegBinary = null;
+        if (isJpegFile(file)) {
+          try {
+            jpegBinary = arrayBufferToBinaryString(await file.arrayBuffer());
+          } catch (_) { jpegBinary = null; }
+        }
+        batchImages.push({ img, filename: file.name.replace(/\.[^.]+$/, ''), jpegBinary });
         loaded++;
         if (loaded === imageFiles.length) afterImagesReady();
       };
@@ -881,7 +905,7 @@ function drawDemoStamp() {
 
 function drawLocationUnavailable(img, targetCanvas) {
   const ctx  = targetCanvas.getContext('2d');
-  const maxW = 1920;
+  const maxW = 1920; // Preview always capped for memory safety
   const scale = img.width > maxW ? maxW / img.width : 1;
   targetCanvas.width  = Math.round(img.width  * scale);
   targetCanvas.height = Math.round(img.height * scale);
@@ -900,9 +924,11 @@ function drawLocationUnavailable(img, targetCanvas) {
   ctx.textBaseline = 'alphabetic';
 }
 
-function drawStampedImage(img, targetCanvas) {
+function drawStampedImage(img, targetCanvas, opts) {
   const ctx  = targetCanvas.getContext('2d');
-  const maxW = 1920; // Downscale to 1080p width to prevent iOS Safari from crashing due to memory limits
+  // Preview stays at ~1920. Download may pass { fullRes: true } when the checkbox is on.
+  const wantFull = !!(opts && opts.fullRes && document.getElementById('tog-full-res')?.checked);
+  const maxW = wantFull ? Infinity : 1920;
   const scale = img.width > maxW ? maxW / img.width : 1;
   targetCanvas.width  = Math.round(img.width  * scale);
   targetCanvas.height = Math.round(img.height * scale);
@@ -1592,6 +1618,90 @@ function headingLabel(h) {
 }
 
 // ── Download ──────────────────────────────────────────────
+function formatExifDateTime(d) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}:${pad(d.getMonth() + 1)}:${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function setExifWriteNote(msg) {
+  const el = document.getElementById('exifWriteNote');
+  if (!el) return;
+  if (msg) {
+    el.textContent = msg;
+    el.style.display = 'block';
+  } else {
+    el.textContent = '';
+    el.style.display = 'none';
+  }
+}
+
+/** Build piexif GPS (+ DateTimeOriginal) object; merge with source EXIF when available. */
+function buildExifBytesForStamp(sourceBinary) {
+  if (typeof piexif === 'undefined') throw new Error('piexif not loaded');
+  let exifObj = null;
+  if (sourceBinary) {
+    try { exifObj = piexif.load(sourceBinary); } catch (_) { exifObj = null; }
+  }
+  if (!exifObj) {
+    exifObj = { '0th': {}, Exif: {}, GPS: {}, '1st': {}, thumbnail: null };
+  }
+  if (!exifObj.GPS) exifObj.GPS = {};
+  if (!exifObj.Exif) exifObj.Exif = {};
+  if (!exifObj['0th']) exifObj['0th'] = {};
+
+  const lat = gpsData.lat;
+  const lng = gpsData.lng;
+  exifObj.GPS[piexif.GPSIFD.GPSLatitudeRef] = lat >= 0 ? 'N' : 'S';
+  exifObj.GPS[piexif.GPSIFD.GPSLatitude] = piexif.GPSHelper.degToDmsRational(Math.abs(lat));
+  exifObj.GPS[piexif.GPSIFD.GPSLongitudeRef] = lng >= 0 ? 'E' : 'W';
+  exifObj.GPS[piexif.GPSIFD.GPSLongitude] = piexif.GPSHelper.degToDmsRational(Math.abs(lng));
+  if (gpsData.altitude != null && Number.isFinite(gpsData.altitude)) {
+    const alt = Math.abs(gpsData.altitude);
+    exifObj.GPS[piexif.GPSIFD.GPSAltitudeRef] = gpsData.altitude < 0 ? 1 : 0;
+    exifObj.GPS[piexif.GPSIFD.GPSAltitude] = [Math.round(alt * 100), 100];
+  }
+
+  const dt = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
+  const dtStr = formatExifDateTime(dt);
+  exifObj.Exif[piexif.ExifIFD.DateTimeOriginal] = dtStr;
+  exifObj['0th'][piexif.ImageIFD.DateTime] = dtStr;
+
+  return piexif.dump(exifObj);
+}
+
+function canvasToJpegBinary(canvas, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) { reject(new Error('toBlob failed')); return; }
+      blob.arrayBuffer().then((ab) => resolve(arrayBufferToBinaryString(ab))).catch(reject);
+    }, 'image/jpeg', quality == null ? 0.92 : quality);
+  });
+}
+
+function binaryStringToBlob(binary, mime) {
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i) & 0xff;
+  return new Blob([bytes], { type: mime || 'image/jpeg' });
+}
+
+function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
+  if (isIOS) {
+    const w = window.open();
+    if (!w) { alert('Please allow popups to view or save the photo.'); URL.revokeObjectURL(url); return; }
+    w.document.write('<html><head><title>Save Photo</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#fff;gap:16px;padding:16px;box-sizing:border-box}p{margin:0;font-size:15px;text-align:center;opacity:.85}</style></head><body><p>Long-press the image below → <strong>Add to Photos</strong> to save</p><img src="' + url + '" style="max-width:100%;border-radius:8px"></body></html>');
+    w.document.close();
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
 async function downloadPhoto() {
   if (!capturedImage || showingDemo) return;
   const quality = checkGpsQuality();
@@ -1602,7 +1712,8 @@ async function downloadPhoto() {
   }
   if (quality.warn && !confirm(quality.msg)) return;
 
-  // Fire GA4 event for stamp generation
+  setExifWriteNote('');
+
   if (typeof gtag === 'function') {
     gtag('event', 'stamp_generated', {
       event_category: 'engagement',
@@ -1611,21 +1722,33 @@ async function downloadPhoto() {
     });
   }
 
-  // Ask for gallery label once per batch (avoids stacked dialogs / duplicate IDs)
   const label = await promptForLabel();
+  const fullRes = !!document.getElementById('tog-full-res')?.checked;
+  const writeExif = !!document.getElementById('tog-exif-write')?.checked;
 
   if (batchImages.length <= 1) {
-    redrawStamp();
-    downloadCanvas(stampCanvas, (batchImages[0]?.filename || 'photo') + '_gpsstamped.jpg');
-    try { await savePhotoToDB(stampCanvas, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
+    const c = document.createElement('canvas');
+    drawStampedImage(capturedImage, c, { fullRes });
+    if (stampCanvas) {
+      try { drawStampedImage(capturedImage, stampCanvas); } catch (_) {}
+    }
+    await downloadCanvas(c, (batchImages[0]?.filename || 'photo') + '_gpsstamped.jpg', {
+      writeExif,
+      sourceJpegBinary: batchImages[0]?.jpegBinary || sourceJpegBinary
+    });
+    try { await savePhotoToDB(c, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
     updateGalleryTabCount();
   } else {
     for (let i = 0; i < batchImages.length; i++) {
-      const { img, filename } = batchImages[i];
+      const { img, filename, jpegBinary } = batchImages[i];
       await new Promise(r => setTimeout(r, i === 0 ? 0 : 400));
       const c = document.createElement('canvas');
-      drawStampedImage(img, c);
-      downloadCanvas(c, filename + '_gpsstamped.jpg', { skipSharePrompt: i > 0 });
+      drawStampedImage(img, c, { fullRes });
+      await downloadCanvas(c, filename + '_gpsstamped.jpg', {
+        skipSharePrompt: i > 0,
+        writeExif,
+        sourceJpegBinary: jpegBinary || null
+      });
       try { await savePhotoToDB(c, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
     }
     updateGalleryTabCount();
@@ -1642,23 +1765,77 @@ async function updateGalleryTabCount() {
   } catch (_) { /* ignore */ }
 }
 
-function downloadCanvas(canvas, filename, opts = {}) {
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-  // iOS Safari ignores the `download` attribute — open in new tab so user can long-press → Save
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
-  if (isIOS) {
-    const w = window.open();
-    if (!w) { alert('Please allow popups to view or save the photo.'); return; }
-    w.document.write('<html><head><title>Save Photo</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#fff;gap:16px;padding:16px;box-sizing:border-box}p{margin:0;font-size:15px;text-align:center;opacity:.85}</style></head><body><p>Long-press the image below → <strong>Add to Photos</strong> to save</p><img src="' + dataUrl + '" style="max-width:100%;border-radius:8px"></body></html>');
-    w.document.close();
+async function downloadCanvas(canvas, filename, opts = {}) {
+  const writeExif = !!opts.writeExif && hasValidGps();
+  let blob = null;
+  let exifFailed = false;
+
+  if (writeExif) {
+    try {
+      let jpeg = await canvasToJpegBinary(canvas, 0.92);
+      const exifBytes = buildExifBytesForStamp(opts.sourceJpegBinary || null);
+      jpeg = piexif.insert(exifBytes, jpeg);
+      blob = binaryStringToBlob(jpeg, 'image/jpeg');
+    } catch (err) {
+      console.warn('[EXIF] Write failed, downloading stamped JPEG without metadata:', err);
+      exifFailed = true;
+    }
+  }
+
+  if (!blob) {
+    blob = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.92);
+    });
+  }
+
+  if (!blob) {
+    // Last resort: data URL path
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    a.click();
+    if (exifFailed) setExifWriteNote('Stamped photo downloaded. EXIF GPS could not be written — visible stamp is still on the image.');
+    if (!opts.skipSharePrompt) offerShareStampedPhoto(canvas, filename);
     return;
   }
-  const a = document.createElement('a');
-  a.href     = dataUrl;
-  a.download = filename;
-  a.click();
 
-  if (!opts.skipSharePrompt) offerShareStampedPhoto(canvas, filename);
+  triggerBlobDownload(blob, filename);
+  if (exifFailed) {
+    setExifWriteNote('Stamped photo downloaded. EXIF GPS could not be written — visible stamp is still on the image.');
+  } else if (writeExif) {
+    setExifWriteNote('');
+  }
+
+  if (!opts.skipSharePrompt) {
+    if (writeExif && !exifFailed) {
+      offerShareBlob(blob, filename);
+    } else {
+      offerShareStampedPhoto(canvas, filename);
+    }
+  }
+}
+
+function offerShareBlob(blob, filename) {
+  if (!navigator.share) return;
+  setTimeout(() => {
+    const file = new File([blob], filename || 'gpsstamped.jpg', { type: 'image/jpeg' });
+    const shareData = { files: [file], title: 'GPS Cam Stamp', text: 'Stamped photo from GPS Cam Stamp' };
+    if (navigator.canShare && !navigator.canShare(shareData)) return;
+    const existing = document.getElementById('shareStampBtn');
+    if (existing) existing.remove();
+    const shareBtn = document.createElement('button');
+    shareBtn.id = 'shareStampBtn';
+    shareBtn.type = 'button';
+    shareBtn.textContent = 'Share stamped photo';
+    shareBtn.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#3b82f6; color:white; border:none; padding:12px 24px; border-radius:30px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); font-weight:600; font-family:sans-serif; cursor:pointer; z-index:10000;';
+    shareBtn.onclick = () => {
+      navigator.share(shareData).catch(() => {});
+      shareBtn.remove();
+    };
+    document.body.appendChild(shareBtn);
+    setTimeout(() => shareBtn.remove(), 10000);
+  }, 400);
 }
 
 /** Share the JPEG file when Web Share Level 2 is available; otherwise download already happened. */
@@ -1729,7 +1906,9 @@ function resetTool() {
   if (previewWrap) previewWrap.classList.add('hidden');
   capturedImage = null;
   batchImages = [];
+  sourceJpegBinary = null;
   showingDemo = false;
+  setExifWriteNote('');
   document.getElementById('customNote').value = '';
   document.getElementById('projectName').value = '';
   if (currentTab === 'camera') startCamera();
