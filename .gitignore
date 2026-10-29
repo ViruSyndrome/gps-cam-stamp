@@ -1,1 +1,8 @@
 *.csv
+docs/
+scripts/
+script_clean.js
+assets/alternativeto/
+
+# Keep GitHub Pages custom domain
+!CNAME

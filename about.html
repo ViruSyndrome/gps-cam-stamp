@@ -7,6 +7,13 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        analytics_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500
+      });
     gtag('js', new Date());
     gtag('config', 'G-Z29TQ3SLFE');
   </script>
@@ -51,24 +58,26 @@
   <p>GPS Cam Stamp was built to fix that. It does one thing extremely well: it stamps your photos with GPS coordinates, address, altitude and timestamp — instantly, in your browser, with no install, no account and no payment.</p>
 
   <h2>How It Works</h2>
-  <p>Everything runs entirely in your browser using standard Web APIs:</p>
+  <p>Stamping runs in your browser using standard Web APIs:</p>
   <ul>
-    <li><strong>Geolocation API</strong> — reads GPS coordinates directly from your device</li>
+    <li><strong>Geolocation API</strong> — reads GPS coordinates from your device</li>
     <li><strong>MediaDevices API</strong> — accesses your camera for live capture</li>
     <li><strong>HTML5 Canvas API</strong> — draws the stamp onto your photo</li>
-    <li><strong>OpenStreetMap Nominatim</strong> — converts coordinates to a readable street address (free, no API key)</li>
+    <li><strong>OpenStreetMap Nominatim</strong> — address from coordinates</li>
+    <li><strong>Esri World Imagery</strong> — optional map thumbnail tiles</li>
+    <li><strong>Open-Meteo</strong> — optional weather for those coordinates</li>
   </ul>
-  <p>Your photos are never uploaded to any server. The stamp is applied locally and the file is downloaded directly to your device.</p>
+  <p>Photo files are stamped locally and downloaded from your browser. Approximate coordinates are sent to the third-party services above when you use address, map, or weather. See the <a href="privacy.html">privacy policy</a> for analytics, ads, Sentry, and IndexedDB gallery storage. The stamp is a visible location/time label, not proof of authenticity.</p>
 
   <h2>Who Uses GPS Cam Stamp</h2>
-  <p>Our users include field workers, construction site managers, real estate agents, insurance adjusters, delivery personnel, NGO workers, travel bloggers, remote freelancers and anyone who needs a verified, location-stamped photo quickly — from any device including a laptop.</p>
+  <p>Our users include field workers, construction site managers, real estate agents, insurance adjusters, delivery personnel, NGO workers, travel bloggers, remote freelancers and anyone who needs a location-stamped photo quickly — from any device including a laptop.</p>
 
   <h2>Our Commitment</h2>
   <ul>
     <li><strong>Free forever</strong> — all features, no subscription</li>
-    <li><strong>No data collection</strong> — we don't store photos, location, or personal data</li>
-    <li><strong>No ads on the tool</strong> — the camera is never blocked</li>
-    <li><strong>Works globally</strong> — every country, every device</li>
+    <li><strong>Honest privacy</strong> — we document third-party services instead of claiming we collect nothing</li>
+    <li><strong>Camera not blocked by ads</strong> — the capture UI stays usable</li>
+    <li><strong>Works globally</strong> — every country, modern browsers</li>
   </ul>
 
   <h2>Contact</h2>

@@ -4,29 +4,30 @@
 
 ## What is GPS Cam Stamp?
 
-GPS Cam Stamp (gpscamstamp.com) is a free, browser-based tool that adds GPS location information directly onto photos as a visible stamp. It works on any device — phone, tablet, laptop, or desktop — without installing an app. All processing is client-side; photos never leave the user's device.
+GPS Cam Stamp (gpscamstamp.com) is a free, browser-based tool that adds GPS location information onto photos as a visible stamp (a location/time label). It works on phone, tablet, laptop, or desktop browsers without installing an app. Photo stamping runs client-side; photo files are not uploaded to GPS Cam Stamp servers for processing. The stamp is not cryptographic proof of authenticity.
 
 ## What problem does it solve?
 
-Most GPS camera tools are Android/iPhone apps only. GPS Cam Stamp is the only free tool that works in a desktop or laptop browser, making it accessible to construction managers, insurance adjusters, real estate agents, and field workers who process photos on a computer.
+Many GPS camera tools are mobile apps. GPS Cam Stamp also runs in desktop and laptop browsers, which helps construction managers, insurance adjusters, real estate agents, and field workers who process photos on a computer.
 
 ## Key features
 
 - Add GPS coordinates (decimal or DMS format) to photos
-- Add street address (via OpenStreetMap reverse geocoding, no API key)
+- Add street address (via OpenStreetMap Nominatim reverse geocoding)
 - Add date and time (format auto-detects from browser locale: DD/MM, MM/DD, or ISO)
 - Add altitude, GPS accuracy radius, compass heading
-- Add weather (temperature in °C or °F, condition via open-meteo.com, no API key)
-- Map thumbnail overlay (OpenStreetMap tile centered on exact GPS location)
+- Add weather (temperature in °C or °F, condition via open-meteo.com)
+- Map thumbnail overlay (Esri World Imagery tiles; attribution shown)
 - Custom text note field
-- 3 overlay styles: Classic (bottom bar), Minimal (corner tag), Pro (side panel)
+- 5 overlay templates: Classic, Minimal, Pro, Card, Enterprise
 - Batch upload and stamp multiple photos at once
 - Works on Chrome, Firefox, Edge, Safari on desktop and mobile
+- Source label on stamp when applicable: Live GPS vs From photo EXIF
 
 ## Who uses it?
 
-- Construction site managers (document progress photos with location proof)
-- Insurance adjusters and claimants (evidence photos with coordinates and timestamp)
+- Construction site managers (document progress photos with location labels)
+- Insurance adjusters and claimants (supporting photos with coordinates and timestamp)
 - Real estate agents (property listing photos with location)
 - Delivery drivers (proof of delivery with GPS stamp)
 - NGO and field workers (remote location documentation)
@@ -40,25 +41,25 @@ Q: Is GPS Cam Stamp free?
 A: Yes. All features are free. No subscription, no trial, no credit card required.
 
 Q: Do photos get uploaded to a server?
-A: No. All processing happens in the browser. Photos never leave the device.
+A: Photo stamping happens in the browser. Approximate coordinates may be sent to Nominatim (address), Esri (map tiles), and Open-Meteo (weather) when those features are used.
 
 Q: Does it work on desktop or laptop?
-A: Yes. It is the only free GPS photo stamp tool that works in a desktop browser (Chrome, Firefox, Edge, Safari on Windows, Mac, Linux).
+A: Yes. It runs in modern desktop browsers (Chrome, Firefox, Edge, Safari on Windows, Mac, Linux) as well as on phones.
 
 Q: How accurate is the GPS?
-A: On a phone outdoors: 3–10 metres. Indoors: 20–100 metres. On a desktop via Wi-Fi: 20–200 metres. Accuracy is shown on the stamp.
+A: On a phone outdoors: often 3–10 metres. Indoors: 20–100 metres. On a desktop via Wi-Fi: often 20–200 metres. Accuracy is shown on the stamp when available.
 
 Q: Can I stamp existing photos from my gallery?
-A: Yes. Use the Upload Photo tab to select any photo from your device.
+A: Yes. Use the Upload Photo tab. Embedded EXIF GPS is preferred; otherwise current GPS is requested. Manual coordinate entry is not supported.
 
 Q: Does it work internationally?
-A: Yes. Address lookup uses OpenStreetMap (global coverage). Date format and temperature unit auto-detect from the user's browser locale and country.
+A: Yes. Address lookup uses OpenStreetMap Nominatim (global coverage). Date format and temperature unit can follow locale/country.
 
 Q: Can stamped photos be used as legal evidence?
-A: GPS-stamped photos are widely used in insurance claims, construction disputes, and field documentation. For formal court use, consult a legal advisor.
+A: They are often used as supporting documentation. The stamp is a visible label, not tamper-proof proof. For formal court use, consult a legal advisor.
 
 Q: How does it compare to GPS Map Camera?
-A: GPS Map Camera (Android) has 100M+ installs but requires app install, is phone-only, and has intrusive ads on the free tier. GPS Cam Stamp is web-based, works on desktop, is fully free, and offers map thumbnail, weather, batch upload, and multiple stamp templates.
+A: GPS Map Camera (Android) has a large install base but is app-based and phone-oriented. GPS Cam Stamp is web-based, works on desktop browsers, is free, and offers map thumbnail, weather, batch upload, and 5 stamp templates.
 
 ## Pages and guides
 
@@ -76,13 +77,14 @@ A: GPS Map Camera (Android) has 100M+ installs but requires app install, is phon
 
 ## Technical details
 
-- Pure vanilla HTML, CSS, JavaScript — no framework, no backend
+- Pure vanilla HTML, CSS, JavaScript — no framework, no photo-upload backend for stamping
 - GPS: browser Geolocation API
-- Address: OpenStreetMap Nominatim (free, no API key)
-- Map thumbnail: OpenStreetMap tile API (free, attribution shown)
-- Weather: open-meteo.com (free, no API key)
+- Address: OpenStreetMap Nominatim
+- Map thumbnail: Esri ArcGIS World Imagery tiles (attribution required)
+- Weather: open-meteo.com
 - Hosted: GitHub Pages with custom domain
-- Privacy: no cookies, no tracking beyond Google Analytics
+- Analytics: Google Analytics; ads: Google AdSense; errors: Sentry
+- Local gallery: IndexedDB in the browser (user can clear via My Photos or browser site data)
 
 ## Contact
 

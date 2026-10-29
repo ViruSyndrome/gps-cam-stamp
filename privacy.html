@@ -7,13 +7,20 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        analytics_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500
+      });
     gtag('js', new Date());
     gtag('config', 'G-Z29TQ3SLFE');
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacy Policy — GPS Cam Stamp</title>
-  <meta name="description" content="GPS Cam Stamp privacy policy. Your photos never leave your device. We collect no personal data, no images and no location data on our servers." />
+  <meta name="description" content="GPS Cam Stamp privacy policy. How we handle photos, location, analytics, ads, error monitoring, and local storage." />
   <link rel="canonical" href="https://www.gpscamstamp.com/privacy.html" />
   <link rel="stylesheet" href="style.css?v=19" />
   <link rel="icon" href="assets/favicon.ico?v=18" sizes="any" />
@@ -21,7 +28,16 @@
   <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png?v=18" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=18" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2959862133855422" crossorigin="anonymous"></script>
-  <script src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
+  <script>
+    Sentry.onLoad(function() {
+      Sentry.init({
+        tracesSampleRate: 0.1,
+        replaysSessionSampleRate: 0,
+        replaysOnErrorSampleRate: 0,
+      });
+    });
+  </script>
     <meta property="og:image" content="https://www.gpscamstamp.com/assets/og-large.jpg">
     <meta property="og:image:secure_url" content="https://www.gpscamstamp.com/assets/og-large.jpg">
     <meta property="og:image:type" content="image/jpeg">
@@ -41,35 +57,53 @@
 
 <div class="page-hero">
   <h1>Privacy Policy</h1>
-  <p>Last updated: June 2026</p>
+  <p>Last updated: October 2026</p>
 </div>
 
 <div class="page-content">
   <h2>Summary</h2>
-  <p><strong>We collect nothing.</strong> No photos, no location data, no personal information is ever sent to our servers. All processing happens entirely in your browser.</p>
+  <p>GPS Cam Stamp stamps photos in your browser. Your photo files are not uploaded to our servers for processing. Approximate location coordinates are sent to third-party services you opt into by using address lookup, map thumbnails, and weather. We also use analytics, advertising, and error monitoring tools that may set cookies or collect device/usage data.</p>
 
   <h2>Photos and Images</h2>
-  <p>Photos you take or upload are processed entirely within your browser using the HTML5 Canvas API. They are never uploaded to, stored on, or transmitted to any server operated by GPS Cam Stamp. The stamped photo is downloaded directly from your browser to your device.</p>
+  <p>Photos you take or upload are processed in your browser with the HTML5 Canvas API. We do not operate a photo-upload server for stamping. Stamped images download from your browser to your device.</p>
+  <p>If you use <strong>My Photos</strong>, stamped images and related metadata (label, timestamp, coordinates) can be stored locally in your browser via <strong>IndexedDB</strong>. That data stays on your device until you delete it. To clear it: open the My Photos tab and delete saved items, or clear this site’s data in your browser settings (site data / cookies and site data for gpscamstamp.com).</p>
 
   <h2>Location Data</h2>
-  <p>Your GPS coordinates are read from your device's Geolocation API and used only to generate the stamp on your photo. This data is held in browser memory only and is discarded when you close or refresh the page. We do not store, log, or transmit your location to our servers.</p>
-  <p>To convert your coordinates to a readable address, we use OpenStreetMap's Nominatim API. A request is sent to Nominatim's servers with your latitude and longitude to retrieve an address. This is subject to OpenStreetMap's privacy policy at <a href="https://osmfoundation.org/wiki/Privacy_Policy" rel="noopener" target="_blank">osmfoundation.org</a>.</p>
+  <p>Your device may provide GPS (or network-based) coordinates through the browser Geolocation API. Those coordinates are held in page memory to build the visible stamp. They are not stored on GPS Cam Stamp servers.</p>
+  <p>Depending on features you enable, approximate coordinates are sent to:</p>
+  <ul>
+    <li><strong>OpenStreetMap Nominatim</strong> — reverse geocoding (address from coordinates). See the <a href="https://osmfoundation.org/wiki/Privacy_Policy" rel="noopener" target="_blank">OSMF privacy policy</a>.</li>
+    <li><strong>Esri ArcGIS World Imagery</strong> — map tile requests that include a tile corresponding to your approximate location. Esri receives the tile request (and typical HTTP metadata). Attribution (“Powered by Esri”) is shown on map thumbnails.</li>
+    <li><strong>Open-Meteo</strong> — weather for the coordinates you stamp. See <a href="https://open-meteo.com/en/terms" rel="noopener" target="_blank">Open-Meteo terms</a>.</li>
+  </ul>
 
-  <h2>Cookies and Tracking</h2>
-  <p>We use Google Analytics to measure page views and general traffic patterns (no personal data). We may display Google AdSense advertisements. Google's privacy policy governs how they use data from these services.</p>
+  <h2>Cookies, Analytics, and Advertising</h2>
+  <p>We use <strong>Google Analytics</strong> to measure traffic and engagement. Google may set cookies and process IP/device data under Google’s policies.</p>
+  <p>We may display <strong>Google AdSense</strong> ads. AdSense uses cookies and similar technologies for ads and measurement. See Google’s advertising and privacy documentation for details and opt-out options.</p>
+  <p><strong>EEA/UK:</strong> A Google-certified Consent Management Platform (CMP) must also be enabled in the AdSense console for visitors in those regions; site-level Consent Mode defaults are not a substitute.</p>
+  <p>We do not claim that this site uses no cookies. Third-party scripts above may set cookies or local storage.</p>
+
+  <h2>Error Monitoring (Sentry)</h2>
+  <p>We use <strong>Sentry</strong> for client-side error reporting so we can fix bugs. Sentry may receive technical diagnostics (for example error messages, browser type, and page URL). Session replay sampling is disabled on this site. See <a href="https://sentry.io/privacy/" rel="noopener" target="_blank">Sentry’s privacy policy</a>.</p>
 
   <h2>Third-Party Services</h2>
   <ul>
-    <li><strong>OpenStreetMap Nominatim</strong> — address lookup (no personal data beyond lat/lng)</li>
-    <li><strong>Google Analytics</strong> — anonymous traffic statistics</li>
+    <li><strong>OpenStreetMap Nominatim</strong> — address lookup (receives lat/lng)</li>
+    <li><strong>Esri World Imagery</strong> — map tiles (receives tile requests for approx. location)</li>
+    <li><strong>Open-Meteo</strong> — weather (receives lat/lng)</li>
+    <li><strong>Google Analytics</strong> — site analytics</li>
     <li><strong>Google AdSense</strong> — advertisements</li>
+    <li><strong>Sentry</strong> — error monitoring</li>
   </ul>
 
+  <h2>What the stamp is (and is not)</h2>
+  <p>The stamp is a <strong>visible location/time label</strong> drawn onto the image. It is not cryptographic proof of authenticity and can be edited like any image. Do not treat it as tamper-proof evidence by itself.</p>
+
   <h2>Children's Privacy</h2>
-  <p>GPS Cam Stamp is not directed at children under 13. We do not knowingly collect any information from children.</p>
+  <p>GPS Cam Stamp is not directed at children under 13. We do not knowingly collect personal information from children.</p>
 
   <h2>Contact</h2>
-  <p>For privacy questions, use our <a href="contact.html">contact page</a>.</p>
+  <p>Privacy questions: <a href="mailto:hello@gpscamstamp.com">hello@gpscamstamp.com</a> or our <a href="contact.html">contact page</a>.</p>
 </div>
 
 <footer class="footer">
@@ -86,5 +120,3 @@
 </footer>
 </body>
 </html>
-
-

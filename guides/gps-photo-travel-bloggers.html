@@ -7,6 +7,13 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        analytics_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500
+      });
     gtag('js', new Date());
     gtag('config', 'G-Z29TQ3SLFE');
   </script>
@@ -84,7 +91,7 @@
   </div>
 
   <h2>Stamping Existing Travel Photos</h2>
-  <p>Already back from a trip with hundreds of photos? Use the Upload tab to add location stamps to photos you already took. You can set the location manually by entering coordinates (find them from Google Maps for the place you visited) so every photo gets the right location stamp even if you're home now.</p>
+  <p>Already back from a trip with hundreds of photos? Use the Upload tab to stamp photos that still contain EXIF GPS from when they were taken. Manual coordinate entry is not available — if a photo has no embedded GPS, the tool will request your current browser location instead.</p>
 
   <h2>For Travel Bloggers: Instagram and Social Media</h2>
   <p>GPS-stamped photos are increasingly popular on Instagram and travel blogs because they give followers something extra — the exact location to visit themselves. The Minimal template keeps the photo beautiful while the location tag adds value for your audience.</p>

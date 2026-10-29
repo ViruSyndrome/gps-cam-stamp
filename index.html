@@ -6,6 +6,13 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        analytics_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500
+      });
     gtag('js', new Date());
     gtag('config', 'G-Z29TQ3SLFE');
   </script>
@@ -90,7 +97,7 @@
       {
         "@type": "Question",
         "name": "Is GPS Cam Stamp really free?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Yes, completely free. All features — camera capture, photo upload, batch stamping, all 3 templates, all 8 GPS stamp fields including map thumbnail and weather — are free with no subscription, no trial period and no credit card." }
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes, completely free. All features — camera capture, photo upload, batch stamping, all 5 templates, all GPS stamp fields including map thumbnail and weather — are free with no subscription, no trial period and no credit card." }
       },
       {
         "@type": "Question",
@@ -100,7 +107,7 @@
       {
         "@type": "Question",
         "name": "Can I use GPS Cam Stamp on a laptop or desktop computer?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Yes. GPS Cam Stamp works on Chrome, Firefox, Edge and Safari on Windows, Mac and Linux. This makes it unique — every GPS camera app on the App Store and Google Play is phone-only. On a laptop, location is determined via Wi-Fi triangulation, giving city-level accuracy suitable for most use cases." }
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. GPS Cam Stamp works on Chrome, Firefox, Edge and Safari on Windows, Mac and Linux, as well as on phones. On a laptop, location is often determined via Wi-Fi triangulation, which may be less precise than outdoor GPS." }
       },
       {
         "@type": "Question",
@@ -110,17 +117,17 @@
       {
         "@type": "Question",
         "name": "Can I stamp existing photos I took earlier?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the Upload Photo tab to upload any photo from your gallery or file system. You can use your current GPS location or enter coordinates manually. This lets you stamp photos taken anywhere, including DSLR camera photos." }
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the Upload Photo tab to upload any photo from your gallery or file system. If the photo embeds EXIF GPS, that location is used; otherwise the tool requests your current GPS location. The stamp is a visible location/time label, not proof of authenticity." }
       },
       {
         "@type": "Question",
         "name": "What information can I add to a photo stamp?",
-        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp can add up to 8 fields: street address, GPS coordinates (decimal or DMS format), altitude, date and time, GPS accuracy, compass heading, current weather with temperature, and a custom text note. A map thumbnail showing your exact location on an OpenStreetMap tile can also be added." }
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp can add street address, GPS coordinates (decimal or DMS format), altitude, date and time, GPS accuracy, compass heading, current weather with temperature, and a custom text note. An optional map thumbnail uses Esri World Imagery tiles (with attribution)." }
       },
       {
         "@type": "Question",
         "name": "What are the stamp template styles available?",
-        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp offers four templates: Classic (dark bar across the bottom, like traditional camera date stamps), Minimal (small semi-transparent tag in the corner, good for real estate and travel photos), Pro (structured side panel with a branded header, ideal for professional documentation), and Card (a floating location card overlay with a map thumbnail on the left and address, coordinates and date on the right — great for sharing on social media)." }
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Cam Stamp offers 5 templates: Classic (dark bar across the bottom), Minimal (small semi-transparent corner tag), Pro (structured side panel with branded header), Card (floating location card with optional map thumbnail), and Enterprise (formal documentation layout)." }
       },
       {
         "@type": "Question",
@@ -135,7 +142,7 @@
       {
         "@type": "Question",
         "name": "How does GPS Cam Stamp compare to GPS Map Camera app?",
-        "acceptedAnswer": { "@type": "Answer", "text": "GPS Map Camera is a popular Android app with over 100 million installs, but it requires app installation, is phone-only, and the free tier is heavily interrupted by ads. GPS Cam Stamp is web-based, works on desktop and mobile without installation, is completely free with no forced ads, and adds features like map thumbnail, weather, batch upload, and three stamp templates." }
+        "acceptedAnswer": { "@type": "Answer", "text": "GPS Map Camera is a popular Android app with over 100 million installs, but it requires app installation and is phone-oriented, and the free tier is often interrupted by ads. GPS Cam Stamp is web-based, works in modern desktop and mobile browsers without installation, is free, and includes map thumbnail, weather, batch upload, and 5 stamp templates. The stamp is a visible label, not cryptographic proof of authenticity." }
       }
     ]
   }
@@ -145,7 +152,7 @@
 
   <link rel="stylesheet" href="style.css?v=19" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2959862133855422" crossorigin="anonymous"></script>
-  <script src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
   <script>
     Sentry.onLoad(function() {
       Sentry.init({
@@ -163,8 +170,8 @@
           /googleadservices\.com/i,
         ],
         tracesSampleRate: 0.1,
-        replaysSessionSampleRate: 0.05,
-        replaysOnErrorSampleRate: 1.0,
+        replaysSessionSampleRate: 0,
+        replaysOnErrorSampleRate: 0,
       });
     });
   </script>
@@ -173,6 +180,10 @@
 
 </head>
 <body>
+<div id="cookieConsent" class="cookie-banner">
+  <p>We use cookies for analytics and advertising. By continuing, you accept our <a href="privacy.html">Privacy Policy</a>.</p>
+  <button type="button" onclick="acceptCookies()">Accept</button>
+</div>
 
 <!-- NAV -->
 <nav class="nav" role="navigation" aria-label="Main navigation">
@@ -433,6 +444,34 @@
   </script>
 </div>
 
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works" aria-labelledby="how-heading">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-tag">How It Works</div>
+      <h2 id="how-heading">Stamp a photo in three steps</h2>
+      <p>A visible location/time label on your image — useful for field notes, not cryptographic proof of authenticity.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num" aria-hidden="true">1</div>
+        <h3>Allow camera &amp; location</h3>
+        <p>Your browser asks for permission. Location stays in the page unless you use address, map, or weather features that call third-party APIs.</p>
+      </div>
+      <div class="step">
+        <div class="step-num" aria-hidden="true">2</div>
+        <h3>Capture or upload</h3>
+        <p>Take a photo with the live camera, or upload images. Embedded EXIF GPS is used when present; otherwise live GPS is requested.</p>
+      </div>
+      <div class="step">
+        <div class="step-num" aria-hidden="true">3</div>
+        <h3>Choose a template &amp; download</h3>
+        <p>Pick one of 5 templates, toggle stamp fields, then download. Processing happens in your browser.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- COMPARISON TABLE -->
 <section class="section" aria-labelledby="cmp-heading">
   <div class="section-inner">
@@ -518,13 +557,13 @@
       <div class="use-case-card">
         <div class="use-case-icon" aria-hidden="true">🏠</div>
         <h3>Real Estate Agents</h3>
-        <p>Stamp property inspection photos with exact address and date. Build client trust with verified, tamper-evident images for MLS listings.</p>
+        <p>Stamp property inspection photos with address and date as a visible location/time label for MLS listings and client updates.</p>
         <a href="guides/gps-photo-real-estate.html" class="use-case-link">Learn more →</a>
       </div>
       <div class="use-case-card">
         <div class="use-case-icon" aria-hidden="true">🛡</div>
         <h3>Insurance Adjusters</h3>
-        <p>Capture location-verified damage photos with GPS coordinates and timestamps. Tamper-evident proof for claims documentation.</p>
+        <p>Capture damage photos with visible GPS coordinates and timestamps to support claims documentation. The stamp is a label, not cryptographic proof.</p>
         <a href="guides/gps-photo-insurance-claim.html" class="use-case-link">Learn more →</a>
       </div>
       <div class="use-case-card">
@@ -560,7 +599,7 @@
       <div class="use-case-card">
         <div class="use-case-icon" aria-hidden="true">🖥</div>
         <h3>Laptop Users — No Phone Needed</h3>
-        <p>Every GPS camera app is phone-only. GPS Cam Stamp is the only tool that works on your laptop browser — perfect for desk-based documentation work.</p>
+        <p>Many GPS camera apps are phone-only. GPS Cam Stamp runs in your laptop or desktop browser — useful for desk-based documentation work.</p>
         <a href="guides/add-gps-to-photo-desktop.html" class="use-case-link">Learn more →</a>
       </div>
     </div>
@@ -585,7 +624,7 @@
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           What are the stamp template styles available? <span class="faq-arrow" aria-hidden="true">▼</span>
         </button>
-        <div class="faq-a">GPS Cam Stamp offers four templates: Classic (dark bar across the bottom, like traditional camera date stamps), Minimal (small semi-transparent tag in the corner, good for real estate and travel photos), Pro (structured side panel with a branded header, ideal for professional documentation), and Card (a floating location card overlay with a map thumbnail on the left and address, coordinates and date on the right - great for sharing on social media).</div>
+        <div class="faq-a">GPS Cam Stamp offers 5 templates: Classic (dark bar across the bottom), Minimal (small semi-transparent corner tag), Pro (structured side panel with branded header), Card (floating location card with optional map thumbnail), and Enterprise (formal documentation layout).</div>
       </div>
       <div class="faq-item" role="listitem">
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
@@ -597,7 +636,7 @@
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           Can I use this on my laptop or desktop? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
-        <div class="faq-a">Yes — and that's one of our biggest advantages. Every GPS camera app in the App Store and Google Play is phone-only. GPS Cam Stamp works on Chrome, Firefox, Edge and Safari on any device.</div>
+        <div class="faq-a">Yes. Many GPS camera apps are phone-oriented. GPS Cam Stamp works on Chrome, Firefox, Edge and Safari on phones and desktops.</div>
       </div>
       <div class="faq-item" role="listitem">
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
@@ -609,7 +648,7 @@
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           Can I stamp photos I already took earlier? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
-        <div class="faq-a">Yes. Use the "Upload Photo" tab to upload any photo from your gallery. You can use your current GPS location or enter coordinates manually. This works for stamping photos taken anywhere.</div>
+        <div class="faq-a">Yes. Use the Upload Photo tab to upload any photo from your gallery. If the photo has EXIF GPS, that location is used; otherwise the tool requests your current GPS location. The stamp is a visible location/time label, not proof of authenticity.</div>
       </div>
       <div class="faq-item" role="listitem">
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
@@ -627,13 +666,13 @@
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           What information can I add to a photo stamp? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
-        <div class="faq-a">Up to 8 fields: street address, GPS coordinates (decimal or DMS format), altitude, date &amp; time, GPS accuracy radius, compass heading, weather with temperature (°C or °F), and a custom text note. A map thumbnail showing your exact location on OpenStreetMap can also be added.</div>
+        <div class="faq-a">Street address, GPS coordinates (decimal or DMS), altitude, date &amp; time, GPS accuracy, compass heading, weather with temperature (°C or °F), and a custom text note. An optional map thumbnail uses Esri World Imagery (with attribution).</div>
       </div>
       <div class="faq-item" role="listitem">
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           How does GPS Cam Stamp compare to GPS Map Camera app? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
-        <div class="faq-a">GPS Map Camera has 100M+ installs but requires app installation, is phone-only, and the free tier is heavily interrupted by ads. GPS Cam Stamp is web-based, works on desktop and mobile without any install, is completely free, and adds features like map thumbnail, weather, batch upload, and 4 stamp templates.</div>
+        <div class="faq-a">GPS Map Camera has 100M+ installs but requires app installation and is phone-oriented, and the free tier is often interrupted by ads. GPS Cam Stamp is web-based, works on desktop and mobile browsers without install, is free, and includes map thumbnail, weather, batch upload, and 5 stamp templates.</div>
       </div>
       <div class="faq-item" role="listitem">
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
@@ -645,7 +684,7 @@
         <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
           What is the best free GPS camera app alternative for desktop? <span class="faq-arrow" aria-hidden="true">▾</span>
         </button>
-        <div class="faq-a">GPS Cam Stamp is the only free GPS photo stamping tool that works directly in a desktop browser. All other GPS camera tools are Android or iPhone apps. Simply open gpscamstamp.com in Chrome or Firefox on your Windows PC or Mac — no install needed.</div>
+        <div class="faq-a">GPS Cam Stamp is a free GPS photo stamping tool that works in a desktop browser as well as on phones. Open gpscamstamp.com in Chrome, Firefox, Edge, or Safari on Windows, Mac, or Linux — no install needed. The stamp is a visible location/time label, not cryptographic proof of authenticity.</div>
       </div>
     </div>
   </div>

@@ -5,8 +5,41 @@
 
 'use strict';
 
+// Cookie Consent — Accept grants analytics/ads storage
+function acceptCookies() {
+  try { localStorage.setItem('cookieConsent', 'true'); } catch (e) {}
+  var banner = document.getElementById('cookieConsent');
+  if (banner) banner.classList.add('hidden');
+  if (typeof gtag === 'function') {
+    gtag('consent', 'update', {
+      ad_storage: 'granted',
+      analytics_storage: 'granted',
+      ad_user_data: 'granted',
+      ad_personalization: 'granted'
+    });
+  }
+}
+
+window.addEventListener('load', function () {
+  var banner = document.getElementById('cookieConsent');
+  if (!banner) return;
+  try {
+    if (localStorage.getItem('cookieConsent') === 'true') {
+      banner.classList.add('hidden');
+      if (typeof gtag === 'function') {
+        gtag('consent', 'update', {
+          ad_storage: 'granted',
+          analytics_storage: 'granted',
+          ad_user_data: 'granted',
+          ad_personalization: 'granted'
+        });
+      }
+    }
+  } catch (e) {}
+});
+
 // ── State ────────────────────────────────────────────────
-let gpsData        = null;   // { lat, lng, altitude, accuracy, heading }
+let gpsData        = null;   // { lat, lng, altitude, accuracy, heading, _fixTime, _source }
 let addressData    = null;   // { display_name, road, city, country }
 let capturedImage  = null;   // HTMLImageElement of the current photo
 let currentTab     = 'camera';
@@ -15,10 +48,18 @@ let camStream      = null;
 let facingMode     = 'environment';
 let addressCache   = {};     // lat,lng → address to avoid repeat calls
 let batchImages    = [];     // [{img, filename}] for batch mode
-let mapTileImg  = null;   // OSM tile Image for map thumbnail
+let mapTileImg  = null;   // Map tile Image for map thumbnail (Esri World Imagery)
 let mapTilePin  = null;   // {px, py} pin pixel position within 256×256 tile
 let appLogoImg  = null;   // Real SVG logo for the stamp
 let customLogoImg = null; // User uploaded custom logo
+let gpsWatchId  = null;   // watchPosition id while camera is live
+let showingDemo = false;  // marketing sample preview — never used for real stamps
+
+// Demo-only sample (marketing preview). Never assigned into gpsData/addressData/weatherData.
+let demoGpsData     = null;
+let demoAddressData = null;
+let demoWeatherData = null;
+let demoImage       = null;
 
 const initLogo = new Image();
 initLogo.onload = () => { appLogoImg = initLogo; };
@@ -28,6 +69,43 @@ let weatherData = null;   // {temp, unit, condition, icon}
 let tempUnit    = 'C';    // 'C' | 'F' — auto-detected from locale/country
 let coordFmt    = 'decimal'; // 'decimal' | 'dms'
 let dateFmt     = 'dmy';  // 'dmy' | 'mdy' | 'iso' — auto-detected from locale
+
+function hasValidGps() {
+  return !!(gpsData && gpsData.lat != null && gpsData.lng != null &&
+    Number.isFinite(gpsData.lat) && Number.isFinite(gpsData.lng));
+}
+
+/** Decimal coords with hemisphere: Lat 40.758000° N  Long 73.985500° W */
+function formatDecimalCoords(lat, lng, precision) {
+  const p = precision == null ? 6 : precision;
+  const latH = lat >= 0 ? 'N' : 'S';
+  const lngH = lng >= 0 ? 'E' : 'W';
+  return `Lat ${fmt(Math.abs(lat), p)}\u00B0 ${latH}  Long ${fmt(Math.abs(lng), p)}\u00B0 ${lngH}`;
+}
+
+function clearLocationDerivedData() {
+  addressData = null;
+  weatherData = null;
+  mapTileImg = null;
+  mapTilePin = null;
+}
+
+function updateStampActionButtons() {
+  const captureBtn = document.getElementById('btnCapture');
+  const downloadBtn = document.querySelector('.preview-wrap .btn-primary');
+  const canStamp = hasValidGps() && !showingDemo;
+  if (captureBtn) {
+    // Allow Capture to open the permission flow when camera is not live yet
+    const camLive = camVideo && camVideo.classList.contains('is-live');
+    captureBtn.disabled = camLive && !hasValidGps();
+    if (camLive && !hasValidGps()) captureBtn.title = 'Location not available — wait for GPS';
+    else captureBtn.title = '';
+  }
+  if (downloadBtn) {
+    downloadBtn.disabled = !canStamp || !capturedImage;
+    downloadBtn.title = canStamp ? '' : 'Location not available — cannot stamp';
+  }
+}
 
 // ── DOM refs (resolved after DOMContentLoaded) ───────────
 let gpsBar, gpsStatus, camVideo, stampCanvas, previewWrap;
@@ -72,19 +150,22 @@ window.addEventListener('load', async () => {
   setupUpload();
   syncToggleStyles();
   updateCompassAvailability();
+  updateStampActionButtons();
   setGPSStatus('idle', 'Camera & location needed — tap Allow below');
   setCamPlaceholder(true,
     'This tool needs <strong>camera</strong> and <strong>location</strong> to stamp photos. Browsers only ask after you tap Allow.');
 
+  // Demo sample stays in demo* vars only — never contaminates real stamp state
   const sampleImg = new Image();
   sampleImg.onload = () => {
-    if (!capturedImage) {
-      capturedImage = sampleImg;
-      gpsData = { lat: 40.7580, lng: -73.9855, altitude: 12.5, accuracy: 5, heading: 42, _exifDate: new Date() };
-      addressData = { city: "New York", suburb: "Manhattan", road: "Broadway", country: "United States" };
-      weatherData = { temp: 22, unit: tempUnit, condition: "Sunny", icon: "☀️" };
+    demoImage = sampleImg;
+    demoGpsData = { lat: 40.7580, lng: -73.9855, altitude: 12.5, accuracy: 5, heading: 42, _exifDate: new Date(), _source: 'demo', _fixTime: Date.now() };
+    demoAddressData = { city: 'New York', suburb: 'Manhattan', road: 'Broadway', country: 'United States' };
+    demoWeatherData = { temp: 22, unit: tempUnit, condition: 'Sunny', icon: '☀️' };
+    if (!capturedImage && !permissionsStarted) {
+      showingDemo = true;
+      capturedImage = demoImage;
       updateFmtUI();
-      updateCompassAvailability();
       redrawStamp();
     }
   };
@@ -105,7 +186,7 @@ async function enablePermissions() {
 
   // Camera first (user-gesture prompt), then GPS — browsers often defer GPS until after interaction
   await startCamera();
-  requestGPS();
+  requestGPS({ watch: true });
 
   if (btn) {
     btn.disabled = false;
@@ -117,35 +198,68 @@ async function enablePermissions() {
 window.enablePermissions = enablePermissions;
 
 // ── GPS ───────────────────────────────────────────────────
-function requestGPS() {
+function stopGPSWatch() {
+  if (gpsWatchId != null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+  }
+}
+
+/** Request a GPS fix. Pass { watch: true } to keep updating while the camera is live. */
+function requestGPS(opts = {}) {
   if (!navigator.geolocation) {
     setGPSStatus('denied', 'GPS not supported by this browser');
+    updateStampActionButtons();
     return;
   }
   setGPSStatus('fetching', 'Getting your location… (may take a few seconds)');
-  navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, {
+  const geoOpts = {
     enableHighAccuracy: true,
     timeout: 20000,
-    maximumAge: 30000
-  });
+    maximumAge: 0
+  };
+  navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, geoOpts);
+  if (opts.watch) {
+    stopGPSWatch();
+    gpsWatchId = navigator.geolocation.watchPosition(onGPSSuccess, onGPSError, {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 5000
+    });
+  }
 }
 
 function onGPSSuccess(pos) {
+  const prevHeading = (gpsData && gpsData.heading != null && !Number.isNaN(gpsData.heading)) ? gpsData.heading : null;
+  // Fresh live fix — drop stale address/weather/map from any previous location
+  clearLocationDerivedData();
+  if (showingDemo) {
+    showingDemo = false;
+    // Never stamp real GPS onto the marketing sample image
+    if (capturedImage === demoImage) {
+      capturedImage = null;
+      if (previewWrap) previewWrap.classList.add('hidden');
+    }
+  }
   gpsData = {
     lat:      pos.coords.latitude,
     lng:      pos.coords.longitude,
     altitude: pos.coords.altitude,
     accuracy: pos.coords.accuracy,
-    heading:  (pos.coords.heading != null && !Number.isNaN(pos.coords.heading)) ? pos.coords.heading : (gpsData && gpsData.heading != null ? gpsData.heading : null),
-    speed:    pos.coords.speed
+    heading:  (pos.coords.heading != null && !Number.isNaN(pos.coords.heading)) ? pos.coords.heading : prevHeading,
+    speed:    pos.coords.speed,
+    _fixTime: Date.now(),
+    _source:  'live'
   };
   const lat = gpsData.lat.toFixed(5);
   const lng = gpsData.lng.toFixed(5);
-  setGPSStatus('found', `📍 ${lat}, ${lng}`);
+  const acc = gpsData.accuracy != null ? ` (±${Math.round(gpsData.accuracy)} m)` : '';
+  setGPSStatus('found', `📍 ${lat}, ${lng}${acc}`);
   fetchAddress(gpsData.lat, gpsData.lng);
   fetchMapTile(gpsData.lat, gpsData.lng);
   fetchWeather(gpsData.lat, gpsData.lng);
   updateCompassAvailability();
+  updateStampActionButtons();
   if (capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) redrawStamp();
 }
 
@@ -157,6 +271,27 @@ function onGPSError(err) {
   };
   setGPSStatus('denied', msgs[err.code] || 'Location error');
   updateCompassAvailability();
+  updateStampActionButtons();
+}
+
+/** Returns { ok, warn, msg } for stamp/capture quality checks. */
+function checkGpsQuality() {
+  if (!hasValidGps()) {
+    return { ok: false, warn: false, msg: 'Location not available. Allow location access or use a photo with EXIF GPS.' };
+  }
+  if (gpsData._source === 'exif') return { ok: true, warn: false, msg: '' };
+  const ageMs = Date.now() - (gpsData._fixTime || 0);
+  if (ageMs > 60000) {
+    return { ok: false, warn: false, msg: 'GPS fix is older than 60 seconds. Wait for a fresh location, then try again.' };
+  }
+  if (gpsData.accuracy != null && gpsData.accuracy > 100) {
+    return {
+      ok: true,
+      warn: true,
+      msg: `GPS accuracy is ±${Math.round(gpsData.accuracy)} m (weaker than 100 m). Stamp anyway?`
+    };
+  }
+  return { ok: true, warn: false, msg: '' };
 }
 
 // Compass heading from DeviceOrientation (geolocation.heading is often null when stationary)
@@ -185,7 +320,12 @@ async function onCompassToggle(cb) {
 window.onCompassToggle = onCompassToggle;
 
 async function ensureCompassHeading() {
-  if (gpsData && gpsData.heading != null && !Number.isNaN(gpsData.heading)) return true;
+  if (!hasValidGps()) {
+    const hint = document.getElementById('compassHint');
+    if (hint) hint.textContent = 'Needs a GPS fix first';
+    return false;
+  }
+  if (gpsData.heading != null && !Number.isNaN(gpsData.heading)) return true;
   if (typeof DeviceOrientationEvent === 'undefined') {
     const hint = document.getElementById('compassHint');
     if (hint) hint.textContent = 'Not supported on this device';
@@ -221,7 +361,8 @@ function onDeviceOrientation(e) {
     heading = (360 - e.alpha) % 360;
   }
   if (heading == null || Number.isNaN(heading)) return;
-  if (!gpsData) gpsData = { lat: null, lng: null, altitude: null, accuracy: null, heading: null, speed: null };
+  // Never invent a GPS fix from compass alone
+  if (!hasValidGps()) return;
   const prev = gpsData.heading;
   gpsData.heading = heading;
   updateCompassAvailability();
@@ -312,7 +453,7 @@ function toDMS(deg, axis) {
   return `${d}°${m}'${s}"${dir}`;
 }
 
-// ── Map Tile (OpenStreetMap — free, attribution required) ──
+// ── Map Tile (Esri World Imagery — attribution required) ──
 const WMO_MAP = {
   0: ['☀', 'Clear'], 1: ['🌤', 'Mostly Clear'], 2: ['⛅', 'Partly Cloudy'], 3: ['☁', 'Overcast'],
   45: ['🌫', 'Fog'], 48: ['🌫', 'Icy Fog'],
@@ -402,6 +543,9 @@ async function startCamera() {
     setCamPlaceholder(false);
     const btn = document.getElementById('btnEnablePerms');
     if (btn) btn.classList.add('hidden');
+    // Keep a live GPS watch while the camera is active
+    if (permissionsStarted) requestGPS({ watch: true });
+    updateStampActionButtons();
   } catch (err) {
     setCamPlaceholder(true,
       'Camera permission denied or unavailable.<br>Tap <strong>Allow</strong> again, or use the <strong>Upload</strong> tab.');
@@ -416,15 +560,18 @@ async function startCamera() {
       camVideo.classList.remove('is-live');
     }
     if (wrap) wrap.classList.remove('is-live');
+    updateStampActionButtons();
   }
 }
 
 function stopCamera() {
+  stopGPSWatch();
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
   if (camVideo) {
     camVideo.srcObject = null;
     camVideo.classList.remove('is-live');
   }
+  updateStampActionButtons();
 }
 
 function switchCamera() {
@@ -437,6 +584,17 @@ function capturePhoto() {
     enablePermissions();
     return;
   }
+  const quality = checkGpsQuality();
+  if (!quality.ok) {
+    setGPSStatus('denied', quality.msg);
+    // Refresh GPS and refuse to stamp with a stale/missing fix
+    requestGPS({ watch: true });
+    updateStampActionButtons();
+    return;
+  }
+  if (quality.warn && !confirm(quality.msg)) return;
+
+  showingDemo = false;
   const canvas = document.createElement('canvas');
   canvas.width  = camVideo.videoWidth  || 1280;
   canvas.height = camVideo.videoHeight || 720;
@@ -469,15 +627,38 @@ function setupUpload() {
 function handleFiles(files) {
   const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
   if (!imageFiles.length) return;
+  showingDemo = false;
   batchImages = [];
   let loaded = 0;
 
-  // For single-file upload, try to read EXIF GPS + datetime first
-  if (imageFiles.length === 1) {
-    readExifFromFile(imageFiles[0]).then(exif => {
-      if (exif) applyExifData(exif);
-    });
-  }
+  const afterImagesReady = async () => {
+    capturedImage = batchImages[0].img;
+    showPreview();
+
+    const needLiveGps = () => {
+      if (!hasValidGps()) return true;
+      if (gpsData._source === 'exif') return false;
+      return !checkGpsQuality().ok;
+    };
+
+    // Single-file: prefer EXIF GPS; otherwise request live location
+    if (imageFiles.length === 1) {
+      const exif = await readExifFromFile(imageFiles[0]);
+      if (exif && exif.lat != null && exif.lng != null) {
+        applyExifData(exif);
+      } else {
+        if (exif && exif.datetime) applyExifData(exif);
+        if (needLiveGps()) {
+          setGPSStatus('fetching', 'No GPS in photo — requesting your current location…');
+          requestGPS();
+        }
+      }
+    } else if (needLiveGps()) {
+      setGPSStatus('fetching', 'Requesting location to stamp uploaded photos…');
+      requestGPS();
+    }
+    updateStampActionButtons();
+  };
 
   imageFiles.forEach(file => {
     const reader = new FileReader();
@@ -486,10 +667,7 @@ function handleFiles(files) {
       img.onload = () => {
         batchImages.push({ img, filename: file.name.replace(/\.[^.]+$/, '') });
         loaded++;
-        if (loaded === imageFiles.length) {
-          capturedImage = batchImages[0].img;
-          showPreview();
-        }
+        if (loaded === imageFiles.length) afterImagesReady();
       };
       img.src = e.target.result;
     };
@@ -612,33 +790,40 @@ function parseApp1(view, start) {
 }
 
 function applyExifData(exif) {
-  if (!exif.lat && !exif.datetime) return;
+  if (exif.lat == null && !exif.datetime) return;
 
   let notice = [];
 
   if (exif.lat !== undefined && exif.lng !== undefined) {
-    // Override GPS data with photo's embedded coordinates
+    clearLocationDerivedData();
+    showingDemo = false;
     gpsData = {
       lat: exif.lat, lng: exif.lng,
-      altitude: exif.altitude || gpsData?.altitude || null,
-      accuracy: null, heading: null, speed: null
+      altitude: exif.altitude != null ? exif.altitude : null,
+      accuracy: null, heading: null, speed: null,
+      _fixTime: Date.now(),
+      _source: 'exif'
     };
     notice.push('GPS from photo EXIF');
-    // Fetch address + map + weather for the photo's location
     fetchAddress(exif.lat, exif.lng);
     fetchMapTile(exif.lat, exif.lng);
     fetchWeather(exif.lat, exif.lng);
   }
 
   if (exif.datetime) {
-    // Override the timestamp with the photo's original capture time
-    gpsData = gpsData || {};
-    gpsData._exifDate = exif.datetime;
-    notice.push('date from photo EXIF');
+    if (!hasValidGps()) {
+      // Date-only EXIF must not invent coordinates
+      gpsData = gpsData || null;
+    }
+    if (gpsData) {
+      gpsData._exifDate = exif.datetime;
+      notice.push('date from photo EXIF');
+    }
   }
 
   if (notice.length) {
     setGPSStatus('found', `📷 ${notice.join(' + ')} — location updated`);
+    updateStampActionButtons();
     redrawStamp();
   }
 }
@@ -647,12 +832,72 @@ function applyExifData(exif) {
 function showPreview() {
   previewWrap.classList.remove('hidden');
   redrawStamp();
+  updateStampActionButtons();
   setTimeout(() => previewWrap.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 }
 
 function redrawStamp() {
-  if (!capturedImage) return;
+  if (!capturedImage || !stampCanvas) return;
+
+  // Marketing demo: draw with demo* data only (never touches real gpsData)
+  if (showingDemo && demoImage && demoGpsData) {
+    drawDemoStamp();
+    updateStampActionButtons();
+    return;
+  }
+
+  if (!hasValidGps()) {
+    drawLocationUnavailable(capturedImage, stampCanvas);
+    updateStampActionButtons();
+    return;
+  }
+
   drawStampedImage(capturedImage, stampCanvas);
+  updateStampActionButtons();
+}
+
+/** Sync draw using demo state without contaminating real gps/address/weather. */
+function drawDemoStamp() {
+  const savedGps = gpsData;
+  const savedAddr = addressData;
+  const savedWeather = weatherData;
+  const savedMap = mapTileImg;
+  const savedPin = mapTilePin;
+  gpsData = demoGpsData;
+  addressData = demoAddressData;
+  weatherData = demoWeatherData;
+  mapTileImg = null;
+  mapTilePin = null;
+  try {
+    drawStampedImage(demoImage, stampCanvas);
+  } finally {
+    gpsData = savedGps;
+    addressData = savedAddr;
+    weatherData = savedWeather;
+    mapTileImg = savedMap;
+    mapTilePin = savedPin;
+  }
+}
+
+function drawLocationUnavailable(img, targetCanvas) {
+  const ctx  = targetCanvas.getContext('2d');
+  const maxW = 1920;
+  const scale = img.width > maxW ? maxW / img.width : 1;
+  targetCanvas.width  = Math.round(img.width  * scale);
+  targetCanvas.height = Math.round(img.height * scale);
+  ctx.drawImage(img, 0, 0, targetCanvas.width, targetCanvas.height);
+  const W = targetCanvas.width;
+  const H = targetCanvas.height;
+  const barH = Math.max(48, Math.round(H * 0.08));
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, H - barH, W, barH);
+  ctx.fillStyle = '#fff';
+  ctx.font = `600 ${Math.max(14, Math.round(W / 28))}px ${STAMP_FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Location not available — allow GPS or use a photo with EXIF GPS', W / 2, H - barH / 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawStampedImage(img, targetCanvas) {
@@ -662,6 +907,7 @@ function drawStampedImage(img, targetCanvas) {
   targetCanvas.width  = Math.round(img.width  * scale);
   targetCanvas.height = Math.round(img.height * scale);
   ctx.drawImage(img, 0, 0, targetCanvas.width, targetCanvas.height);
+  if (!hasValidGps()) return;
   drawStamp(ctx, targetCanvas.width, targetCanvas.height);
 }
 
@@ -1019,15 +1265,18 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
     cityLine = locArr.join(', ');
     if (addressData.country && addressData.country.toLowerCase() === 'india') cityLine += ' \uD83C\uDDEE\uD83C\uDDF3';
     fullAddr = [addressData.road, addressData.city, addressData.state, addressData.postcode, addressData.country].filter(Boolean).join(', ');
-  } else if (gpsData) {
-    cityLine = `${fmt(Math.abs(gpsData.lat), 4)}\u00B0 ${fmt(Math.abs(gpsData.lng), 4)}\u00B0`;
+  } else if (hasValidGps()) {
+    cityLine = formatDecimalCoords(gpsData.lat, gpsData.lng, 4);
   } else {
-    cityLine = 'Location Unknown';
+    cityLine = 'Location not available';
   }
 
   let coordLine = '';
-  if (chk('tog-coords') && gpsData)
-    coordLine = `Lat ${fmt(Math.abs(gpsData.lat), 6)}\u00B0  Long ${fmt(Math.abs(gpsData.lng), 6)}\u00B0`;
+  if (chk('tog-coords') && hasValidGps()) {
+    coordLine = coordFmt === 'dms'
+      ? `${toDMS(gpsData.lat, 'lat')}  ${toDMS(gpsData.lng, 'lng')}`
+      : formatDecimalCoords(gpsData.lat, gpsData.lng, 6);
+  }
 
   let dateStr = '';
   if (chk('tog-datetime')) {
@@ -1213,6 +1462,12 @@ function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
 function buildStampLines(opts = {}) {
   const lines = [];
   const skipCompassText = !!opts.skipCompassText;
+
+  if (!hasValidGps()) {
+    lines.push('Location not available');
+    return lines;
+  }
+
   // Use EXIF original capture time if available, otherwise current time
   const now = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
 
@@ -1221,15 +1476,15 @@ function buildStampLines(opts = {}) {
     if (addr) lines.push(addr);
   }
 
-  if (chk('tog-coords') && gpsData) {
+  if (chk('tog-coords')) {
     if (coordFmt === 'dms') {
       lines.push(`${toDMS(gpsData.lat,'lat')}  ${toDMS(gpsData.lng,'lng')}`);
     } else {
-      lines.push(`Lat ${fmt(Math.abs(gpsData.lat), 6)}\u00B0  Long ${fmt(Math.abs(gpsData.lng), 6)}\u00B0`);
+      lines.push(formatDecimalCoords(gpsData.lat, gpsData.lng, 6));
     }
   }
 
-  if (chk('tog-altitude') && gpsData && gpsData.altitude != null) {
+  if (chk('tog-altitude') && gpsData.altitude != null) {
     lines.push(`ALT: ${Math.round(gpsData.altitude)} m`);
   }
 
@@ -1237,15 +1492,19 @@ function buildStampLines(opts = {}) {
     lines.push(`${fmtDate(now)}  ${fmtTime(now)}`);
   }
 
-  if (chk('tog-accuracy') && gpsData) {
-    lines.push(`ACC: \u00B1${Math.round(gpsData.accuracy || 0)} m`);
+  if (chk('tog-accuracy')) {
+    if (gpsData.accuracy != null && Number.isFinite(gpsData.accuracy)) {
+      lines.push(`ACC: \u00B1${Math.round(gpsData.accuracy)} m`);
+    } else {
+      lines.push('ACC: n/a');
+    }
   }
 
-  if (!skipCompassText && chk('tog-compass') && gpsData && gpsData.heading != null) {
+  if (!skipCompassText && chk('tog-compass') && gpsData.heading != null) {
     lines.push(`DIR: ${headingLabel(gpsData.heading)} (${Math.round(gpsData.heading)}\u00B0)`);
   }
 
-  if (chk('tog-speed') && gpsData && gpsData.speed != null) {
+  if (chk('tog-speed') && gpsData.speed != null) {
     const spd = tempUnit === 'F'
       ? Math.round(gpsData.speed * 2.237) + ' mph'
       : Math.round(gpsData.speed * 3.6) + ' km/h';
@@ -1258,6 +1517,9 @@ function buildStampLines(opts = {}) {
       : weatherData.temp + '\u00B0C';
     lines.push(`${wTemp}  ${weatherData.condition}`);
   }
+
+  if (gpsData._source === 'exif') lines.push('From photo EXIF');
+  else if (gpsData._source === 'live') lines.push('Live GPS');
 
   const project = document.getElementById('projectName')?.value?.trim();
   if (project) lines.push('PROJECT: ' + project);
@@ -1273,13 +1535,19 @@ function buildStampLines(opts = {}) {
 function buildExtraLines(opts = {}) {
   const lines = [];
   const skipCompassText = !!opts.skipCompassText;
-  if (chk('tog-altitude') && gpsData && gpsData.altitude != null)
+  if (!hasValidGps()) return lines;
+  if (chk('tog-altitude') && gpsData.altitude != null)
     lines.push(`ALT: ${Math.round(gpsData.altitude)} m`);
-  if (chk('tog-accuracy') && gpsData)
-    lines.push(`ACC: \u00B1${Math.round(gpsData.accuracy || 0)} m`);
-  if (!skipCompassText && chk('tog-compass') && gpsData && gpsData.heading != null)
+  if (chk('tog-accuracy')) {
+    if (gpsData.accuracy != null && Number.isFinite(gpsData.accuracy)) {
+      lines.push(`ACC: \u00B1${Math.round(gpsData.accuracy)} m`);
+    } else {
+      lines.push('ACC: n/a');
+    }
+  }
+  if (!skipCompassText && chk('tog-compass') && gpsData.heading != null)
     lines.push(`DIR: ${headingLabel(gpsData.heading)} (${Math.round(gpsData.heading)}\u00B0)`);
-  if (chk('tog-speed') && gpsData && gpsData.speed != null) {
+  if (chk('tog-speed') && gpsData.speed != null) {
     const spd = tempUnit === 'F'
       ? Math.round(gpsData.speed * 2.237) + ' mph'
       : Math.round(gpsData.speed * 3.6) + ' km/h';
@@ -1291,6 +1559,8 @@ function buildExtraLines(opts = {}) {
       : weatherData.temp + '\u00B0C';
     lines.push(`${wTemp}  ${weatherData.condition}`);
   }
+  if (gpsData._source === 'exif') lines.push('From photo EXIF');
+  else if (gpsData._source === 'live') lines.push('Live GPS');
   const project = document.getElementById('projectName')?.value?.trim();
   if (project) lines.push('PROJECT: ' + project);
 
@@ -1322,8 +1592,16 @@ function headingLabel(h) {
 }
 
 // ── Download ──────────────────────────────────────────────
-function downloadPhoto() {
-  if (!capturedImage) return; // nothing to download
+async function downloadPhoto() {
+  if (!capturedImage || showingDemo) return;
+  const quality = checkGpsQuality();
+  if (!quality.ok) {
+    setGPSStatus('denied', quality.msg);
+    updateStampActionButtons();
+    return;
+  }
+  if (quality.warn && !confirm(quality.msg)) return;
+
   // Fire GA4 event for stamp generation
   if (typeof gtag === 'function') {
     gtag('event', 'stamp_generated', {
@@ -1332,25 +1610,39 @@ function downloadPhoto() {
       value: batchImages.length
     });
   }
+
+  // Ask for gallery label once per batch (avoids stacked dialogs / duplicate IDs)
+  const label = await promptForLabel();
+
   if (batchImages.length <= 1) {
-    // Single download
+    redrawStamp();
     downloadCanvas(stampCanvas, (batchImages[0]?.filename || 'photo') + '_gpsstamped.jpg');
-    // Auto-save to gallery
-    saveToGalleryAfterDownload(stampCanvas);
+    try { await savePhotoToDB(stampCanvas, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
+    updateGalleryTabCount();
   } else {
-    // Batch — download each with a delay to avoid browser blocking
-    batchImages.forEach(({ img, filename }, i) => {
-      setTimeout(() => {
-        const c = document.createElement('canvas');
-        drawStampedImage(img, c);
-        downloadCanvas(c, filename + '_gpsstamped.jpg');
-        saveToGalleryAfterDownload(c);
-      }, i * 400);
-    });
+    for (let i = 0; i < batchImages.length; i++) {
+      const { img, filename } = batchImages[i];
+      await new Promise(r => setTimeout(r, i === 0 ? 0 : 400));
+      const c = document.createElement('canvas');
+      drawStampedImage(img, c);
+      downloadCanvas(c, filename + '_gpsstamped.jpg', { skipSharePrompt: i > 0 });
+      try { await savePhotoToDB(c, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
+    }
+    updateGalleryTabCount();
   }
 }
 
-function downloadCanvas(canvas, filename) {
+async function updateGalleryTabCount() {
+  try {
+    const photos = await loadAllPhotos();
+    const tabBtn = document.getElementById('tab-gallery');
+    if (tabBtn && photos.length > 0) {
+      tabBtn.textContent = '🖼️ My Photos (' + photos.length + ')';
+    }
+  } catch (_) { /* ignore */ }
+}
+
+function downloadCanvas(canvas, filename, opts = {}) {
   const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
   // iOS Safari ignores the `download` attribute — open in new tab so user can long-press → Save
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
@@ -1365,20 +1657,37 @@ function downloadCanvas(canvas, filename) {
   a.href     = dataUrl;
   a.download = filename;
   a.click();
-  
-  if (navigator.share) {
-    setTimeout(() => {
-        const shareBtn = document.createElement('button');
-        shareBtn.textContent = 'Share stamped photo';
-        shareBtn.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#3b82f6; color:white; border:none; padding:12px 24px; border-radius:30px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); font-weight:600; font-family:sans-serif; cursor:pointer; z-index:10000; transition: transform 0.2s;';
-        shareBtn.onclick = () => {
-            navigator.share({ title: 'GPS Cam Stamp', text: 'Check out my stamped photo!', url: window.location.href }).catch(console.error);
-            shareBtn.remove();
-        };
-        document.body.appendChild(shareBtn);
-        setTimeout(() => shareBtn.remove(), 10000);
-    }, 1000);
-  }
+
+  if (!opts.skipSharePrompt) offerShareStampedPhoto(canvas, filename);
+}
+
+/** Share the JPEG file when Web Share Level 2 is available; otherwise download already happened. */
+function offerShareStampedPhoto(canvas, filename) {
+  if (!navigator.share || typeof canvas.toBlob !== 'function') return;
+  setTimeout(() => {
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], filename || 'gpsstamped.jpg', { type: 'image/jpeg' });
+      const shareData = { files: [file], title: 'GPS Cam Stamp', text: 'Stamped photo from GPS Cam Stamp' };
+      const canFiles = !navigator.canShare || navigator.canShare(shareData);
+      if (!canFiles) return;
+
+      const existing = document.getElementById('shareStampBtn');
+      if (existing) existing.remove();
+
+      const shareBtn = document.createElement('button');
+      shareBtn.id = 'shareStampBtn';
+      shareBtn.type = 'button';
+      shareBtn.textContent = 'Share stamped photo';
+      shareBtn.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#3b82f6; color:white; border:none; padding:12px 24px; border-radius:30px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); font-weight:600; font-family:sans-serif; cursor:pointer; z-index:10000;';
+      shareBtn.onclick = () => {
+        navigator.share(shareData).catch(() => { /* user cancelled or unsupported */ });
+        shareBtn.remove();
+      };
+      document.body.appendChild(shareBtn);
+      setTimeout(() => shareBtn.remove(), 10000);
+    }, 'image/jpeg', 0.92);
+  }, 400);
 }
 
 // ── UI Helpers ────────────────────────────────────────────
@@ -1400,7 +1709,9 @@ function switchTab(tab) {
     if (previewWrap) previewWrap.classList.add('hidden');
     capturedImage = null;
     batchImages = [];
+    showingDemo = false;
   }
+  updateStampActionButtons();
 }
 window.switchTab = switchTab;
 
@@ -1418,10 +1729,12 @@ function resetTool() {
   if (previewWrap) previewWrap.classList.add('hidden');
   capturedImage = null;
   batchImages = [];
+  showingDemo = false;
   document.getElementById('customNote').value = '';
   document.getElementById('projectName').value = '';
   if (currentTab === 'camera') startCamera();
   else document.getElementById('fileInput').value = '';
+  updateStampActionButtons();
   document.getElementById('tool').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -1739,55 +2052,59 @@ function confirmDeletePhoto(id) {
 // ── Label prompt modal ─────────────────────────────────────
 function promptForLabel() {
   return new Promise((resolve) => {
-    // If we already have a session label, reuse it
+    // Reuse session label — ask once per batch/session
     if (_sessionLabel) { resolve(_sessionLabel); return; }
+
+    // Clear any leftover overlays (prevents stacked dialogs locking the page)
+    document.querySelectorAll('.label-overlay').forEach(el => el.remove());
 
     const overlay = document.createElement('div');
     overlay.className = 'label-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
     overlay.innerHTML = `
       <div class="label-modal">
-        <h3>📋 Label this photo</h3>
+        <h3>Label this photo</h3>
         <p>Add a label like a property address, site name, or project to group your photos.</p>
-        <input type="text" id="labelInput" placeholder="e.g. 123 Main St, Site B" maxlength="80" autofocus>
+        <input type="text" class="label-input" placeholder="e.g. 123 Main St, Site B" maxlength="80" autofocus>
         <div class="modal-btns">
-          <button class="btn-skip" id="labelSkip">Skip</button>
-          <button class="btn-save" id="labelSave">Save</button>
+          <button type="button" class="btn-skip">Skip</button>
+          <button type="button" class="btn-save">Save</button>
         </div>
       </div>
     `;
     document.body.appendChild(overlay);
-    const input = document.getElementById('labelInput');
-    const save  = document.getElementById('labelSave');
-    const skip  = document.getElementById('labelSkip');
+    // Scope queries to this overlay — never use global duplicate IDs
+    const input = overlay.querySelector('.label-input');
+    const save  = overlay.querySelector('.btn-save');
+    const skip  = overlay.querySelector('.btn-skip');
 
     function finish(val) {
       _sessionLabel = val;
+      document.removeEventListener('keydown', onKey);
       overlay.remove();
       resolve(val);
     }
+    function onKey(e) {
+      if (e.key === 'Escape') finish('Unlabelled');
+      if (e.key === 'Enter' && document.activeElement === input) {
+        finish(input.value.trim() || 'Unlabelled');
+      }
+    }
     save.onclick = () => finish(input.value.trim() || 'Unlabelled');
     skip.onclick = () => finish('Unlabelled');
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') finish(input.value.trim() || 'Unlabelled');
-    });
-    // Focus the input after modal renders
-    requestAnimationFrame(() => input.focus());
+    document.addEventListener('keydown', onKey);
+    requestAnimationFrame(() => input && input.focus());
   });
 }
 
-// ── Auto-save after download ───────────────────────────────
+// ── Auto-save after download (legacy helper; downloadPhoto now labels once) ──
 async function saveToGalleryAfterDownload(canvas) {
   try {
     const label = await promptForLabel();
     await savePhotoToDB(canvas, label);
-    // Update gallery badge count on tab
-    const photos = await loadAllPhotos();
-    const tabBtn = document.getElementById('tab-gallery');
-    if (tabBtn && photos.length > 0) {
-      tabBtn.textContent = '🖼️ My Photos (' + photos.length + ')';
-    }
+    await updateGalleryTabCount();
   } catch (e) {
-    // Silently fail — don't block the download flow
     console.warn('[Gallery] Auto-save failed:', e);
   }
 }

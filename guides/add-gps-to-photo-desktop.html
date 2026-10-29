@@ -7,6 +7,13 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        analytics_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500
+      });
     gtag('js', new Date());
     gtag('config', 'G-Z29TQ3SLFE');
   </script>
@@ -84,8 +91,8 @@
     <a href="../index.html" class="btn-cta">Open GPS Cam Stamp →</a>
   </div>
 
-  <h2>Manual Coordinate Entry for DSLR Photos</h2>
-  <p>If you took photos on a DSLR camera in a specific location, you can manually enter the GPS coordinates rather than relying on your browser's location. Get the coordinates from Google Maps (right-click → "What's here?") and type them into the manual location fields. This lets you accurately stamp DSLR photos with their actual location even from a desktop.</p>
+  <h2>Stamping DSLR or gallery photos</h2>
+  <p>If your photo embeds EXIF GPS (common on many phones and some cameras), GPS Cam Stamp reads that location when you upload. Otherwise it requests your browser’s current location. Manual coordinate entry is not supported — stamp at the place the photo was taken, or use a file that already contains GPS EXIF.</p>
 
   <h2>Browser Compatibility on Desktop</h2>
   <ul>
