@@ -163,12 +163,24 @@
           /runtime\.sendMessage/i,
           /Extension context invalidated/i,
           /adsbygoogle/i,
+          /TagError/i,
+          /No slot size/i,
         ],
         denyUrls: [
           /pagead2\.googlesyndication\.com/i,
           /googlesyndication\.com/i,
           /googleadservices\.com/i,
+          /ep1\.adtrafficquality\.google/i,
         ],
+        beforeSend: function(event) {
+          try {
+            var msg = (event && event.message) || (event && event.exception && event.exception.values && event.exception.values[0] && event.exception.values[0].value) || '';
+            if (/TagError|adsbygoogle|availableWidth/i.test(msg)) {
+              return null;
+            }
+          } catch (e) {}
+          return event;
+        },
         tracesSampleRate: 0.1,
         replaysSessionSampleRate: 0,
         replaysOnErrorSampleRate: 0,
@@ -457,7 +469,9 @@
        data-ad-format="auto"
        data-full-width-responsive="true"></ins>
   <script>
-       (adsbygoogle = window.adsbygoogle || []).push({});
+    try {
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {}
   </script>
 </div>
 
