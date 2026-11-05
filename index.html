@@ -190,6 +190,17 @@
 
   <!-- Network footer styles are handled in style.css -->
 
+  <script>
+    // Early stub to handle immediate button taps before script.js finishes loading
+    window.enablePermissions = function() {
+      window._pendingEnablePermissions = true;
+      var btn = document.getElementById('btnEnablePerms');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Loading camera…';
+      }
+    };
+  </script>
 </head>
 <body>
 <div id="cookieConsent" class="cookie-banner">
@@ -754,7 +765,7 @@
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="script.js?v=19" defer></script>
+<script src="script.js?v=20"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));

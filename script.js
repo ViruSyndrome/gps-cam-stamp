@@ -197,6 +197,9 @@ async function enablePermissions() {
   }
 }
 window.enablePermissions = enablePermissions;
+if (window._pendingEnablePermissions) {
+  enablePermissions();
+}
 
 // ── GPS ───────────────────────────────────────────────────
 function stopGPSWatch() {
