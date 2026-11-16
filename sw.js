@@ -1,13 +1,14 @@
-const CACHE = 'gpscamstamp-v19';
+const CACHE = 'gpscamstamp-v21';
 const PRECACHE = [
   '/',
   '/style.css?v=19',
-  '/script.js?v=18',
+  '/script.js?v=21',
   '/manifest.json?v=18',
-  '/assets/favicon.ico',
-  '/assets/favicon-32.png',
-  '/assets/favicon-64.png',
-  '/assets/logo-nav.png'
+  '/assets/favicon.ico?v=18',
+  '/assets/favicon-32.png?v=18',
+  '/assets/favicon-64.png?v=18',
+  '/assets/logo-nav.png',
+  '/assets/og-image.webp'
 ];
 
 self.addEventListener('install', e => {
@@ -25,14 +26,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Only handle GET requests for same-origin or OSM/open-meteo assets
+  // Only handle GET requests for same-origin or OSM/open-meteo/Esri assets
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
   // Network-first for API calls (geocoding, weather, map tiles) — never stale
   const isApi = url.hostname.includes('nominatim') ||
                 url.hostname.includes('open-meteo') ||
-                url.hostname.includes('openstreetmap.org');
+                url.hostname.includes('openstreetmap.org') ||
+                url.hostname.includes('arcgisonline.com');
   if (isApi) {
     e.respondWith(fetch(e.request).catch(() => new Response('', { status: 503 })));
     return;
@@ -45,14 +47,14 @@ self.addEventListener('fetch', e => {
         const clone = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
         return res;
-      }).catch(() => caches.match(e.request))
+      }).catch(() => caches.match(e.request, { ignoreSearch: true }))
     );
     return;
   }
 
   // Cache-first for static assets
   e.respondWith(
-    caches.match(e.request).then(cached => {
+    caches.match(e.request, { ignoreSearch: true }).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
         if (res.ok && url.origin === self.location.origin) {

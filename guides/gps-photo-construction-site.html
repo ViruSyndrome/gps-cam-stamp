@@ -29,7 +29,58 @@
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png?v=18" />
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"GPS Photo Stamps for Construction Sites","description":"How to use GPS-stamped photos for construction site documentation and reports.","url":"https://www.gpscamstamp.com/guides/gps-photo-construction-site.html","publisher":{"@type":"Organization","name":"GPS Cam Stamp","url":"https://www.gpscamstamp.com"}}</script>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2959862133855422" crossorigin="anonymous"></script>
+  <script>
+    window.addEventListener('error', function (e) {
+      var msg = (e && (e.message || (e.error && e.error.message))) || '';
+      var src = (e && e.filename) || '';
+      if (/TagError|adsbygoogle|availableWidth|No slot size|zaloJSV2/i.test(msg) || /googlesyndication|googleadservices|adtrafficquality/i.test(src)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return true;
+      }
+    }, true);
+  </script>
   <script src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
+  <script>
+    if (typeof Sentry !== 'undefined') {
+      Sentry.onLoad(function() {
+        Sentry.init({
+          ignoreErrors: [
+            "Script error.",
+            /Script error\.?/i,
+            /ErrorEvent/i,
+            /ResizeObserver loop/i,
+            /runtime\.sendMessage/i,
+            /Extension context invalidated/i,
+            /adsbygoogle/i,
+            /TagError/i,
+            /No slot size/i,
+            /zaloJSV2/i,
+          ],
+          denyUrls: [
+            /pagead2\.googlesyndication\.com/i,
+            /googlesyndication\.com/i,
+            /googleadservices\.com/i,
+            /ep1\.adtrafficquality\.google/i,
+          ],
+          beforeSend: function(event) {
+            try {
+              var ex = event && event.exception && event.exception.values && event.exception.values[0];
+              var msg = (event && event.message) || (ex && ex.value) || '';
+              var typ = (ex && ex.type) || '';
+              if (/TagError|ErrorEvent/i.test(typ) || /TagError|adsbygoogle|availableWidth|No slot size|Script error|ErrorEvent|zaloJSV2/i.test(msg)) {
+                return null;
+              }
+            } catch (e) {}
+            return event;
+          },
+          tracesSampleRate: 0.1,
+          replaysSessionSampleRate: 0,
+          replaysOnErrorSampleRate: 0,
+        });
+      });
+    }
+  </script>
     <meta property="og:image" content="https://www.gpscamstamp.com/assets/og-large.jpg">
     <meta property="og:image:secure_url" content="https://www.gpscamstamp.com/assets/og-large.jpg">
     <meta property="og:image:type" content="image/jpeg">
@@ -102,7 +153,7 @@
   </div>
 
   <h2>Batch Stamping for Daily Reports</h2>
-  <p>If you take 20–30 photos at a site visit, GPS Cam Stamp's batch upload feature lets you stamp all of them at once with the same GPS data and template. Upload all photos, set your template and note, and download them all stamped in one click.</p>
+  <p>If you take 20–30 photos at a site visit, GPS Cam Stamp's batch upload feature lets you select all of them together and apply the same template and stamp settings. Upload your photos (each uses its own EXIF GPS if present, or your current location), set your template and note, and click Download — your browser will stamp and save each photo sequentially (allow multiple downloads if prompted).</p>
 
   <h2>Comparison: GPS Cam Stamp vs GPS Camera Apps for Site Teams</h2>
   <p>Most construction teams currently use GPS camera apps like GPS Map Camera or Timestamp Camera. These work, but have significant limitations for professional use:</p>
@@ -134,6 +185,7 @@
     <p class="footer-copy">© 2026 GPS Cam Stamp. All rights reserved.</p>
   </div>
 </footer>
+<script src="../script.js?v=21"></script>
 </body>
 </html>
 

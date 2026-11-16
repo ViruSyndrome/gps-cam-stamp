@@ -164,44 +164,46 @@
       }
     }, true);
   </script>
-  <script defer src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
+  <script src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
   <script>
-    Sentry.onLoad(function() {
-      Sentry.init({
-        ignoreErrors: [
-          "Script error.",
-          /Script error\.?/i,
-          /ErrorEvent/i,
-          /ResizeObserver loop/i,
-          /runtime\.sendMessage/i,
-          /Extension context invalidated/i,
-          /adsbygoogle/i,
-          /TagError/i,
-          /No slot size/i,
-          /zaloJSV2/i,
-        ],
-        denyUrls: [
-          /pagead2\.googlesyndication\.com/i,
-          /googlesyndication\.com/i,
-          /googleadservices\.com/i,
-          /ep1\.adtrafficquality\.google/i,
-        ],
-        beforeSend: function(event) {
-          try {
-            var ex = event && event.exception && event.exception.values && event.exception.values[0];
-            var msg = (event && event.message) || (ex && ex.value) || '';
-            var typ = (ex && ex.type) || '';
-            if (/TagError|ErrorEvent/i.test(typ) || /TagError|adsbygoogle|availableWidth|No slot size|Script error|ErrorEvent|zaloJSV2/i.test(msg)) {
-              return null;
-            }
-          } catch (e) {}
-          return event;
-        },
-        tracesSampleRate: 0.1,
-        replaysSessionSampleRate: 0,
-        replaysOnErrorSampleRate: 0,
+    if (typeof Sentry !== 'undefined') {
+      Sentry.onLoad(function() {
+        Sentry.init({
+          ignoreErrors: [
+            "Script error.",
+            /Script error\.?/i,
+            /ErrorEvent/i,
+            /ResizeObserver loop/i,
+            /runtime\.sendMessage/i,
+            /Extension context invalidated/i,
+            /adsbygoogle/i,
+            /TagError/i,
+            /No slot size/i,
+            /zaloJSV2/i,
+          ],
+          denyUrls: [
+            /pagead2\.googlesyndication\.com/i,
+            /googlesyndication\.com/i,
+            /googleadservices\.com/i,
+            /ep1\.adtrafficquality\.google/i,
+          ],
+          beforeSend: function(event) {
+            try {
+              var ex = event && event.exception && event.exception.values && event.exception.values[0];
+              var msg = (event && event.message) || (ex && ex.value) || '';
+              var typ = (ex && ex.type) || '';
+              if (/TagError|ErrorEvent/i.test(typ) || /TagError|adsbygoogle|availableWidth|No slot size|Script error|ErrorEvent|zaloJSV2/i.test(msg)) {
+                return null;
+              }
+            } catch (e) {}
+            return event;
+          },
+          tracesSampleRate: 0.1,
+          replaysSessionSampleRate: 0,
+          replaysOnErrorSampleRate: 0,
+        });
       });
-    });
+    }
   </script>
 
   <!-- Network footer styles are handled in style.css -->
@@ -487,21 +489,6 @@
 
 </section>
 
-<!-- AdSense Banner (outside .hero so it cannot steal flex order above the tool) -->
-<div class="ad-slot" style="margin: 24px auto; text-align: center; max-width: 800px; display: block; width: 100%; min-height: 0;">
-  <ins class="adsbygoogle"
-       style="display:block"
-       data-ad-client="ca-pub-2959862133855422"
-       data-ad-slot="auto"
-       data-ad-format="auto"
-       data-full-width-responsive="true"></ins>
-  <script>
-    try {
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {}
-  </script>
-</div>
-
 <!-- HOW IT WORKS -->
 <section class="section" id="how-it-works" aria-labelledby="how-heading">
   <div class="section-inner">
@@ -749,24 +736,6 @@
 </section>
 
 <!-- FOOTER -->
-<div class="network-footer">
-  <p class="network-title">Explore Our Other Free Tools</p>
-  <div class="network-links">
-      <a href="https://www.getatsready.com/" title="Free ATS Resume Checker" class="network-link" data-id="ats">
-        <img src="https://www.getatsready.com/favicon.svg" alt="" class="network-icon-img" width="18" height="18"> <span class="network-text">ATS Resume Checker</span>
-      </a>
-      <a href="https://www.getniftyready.com/" title="Nifty 50 Market Tracker" class="network-link" data-id="nifty">
-        <img src="https://www.getniftyready.com/favicon.svg" alt="" class="network-icon-img" width="18" height="18"> <span class="network-text">Nifty Market Tracker</span>
-      </a>
-      <a href="https://www.pregnancyweektracker.com/" title="Pregnancy Week by Week Tracker" class="network-link" data-id="pwt">
-        <img src="https://www.pregnancyweektracker.com/favicon.svg" alt="" class="network-icon-img" width="18" height="18"> <span class="network-text">Pregnancy Tracker</span>
-      </a>
-      <a href="https://www.globalvisamath.com/" title="Schengen Visa & Immigration Calculators" class="network-link" data-id="gvm">
-        <img src="https://www.globalvisamath.com/favicon.svg" alt="" class="network-icon-img" width="18" height="18"> <span class="network-text">Global Visa Math</span>
-      </a>
-    </div>
-</div>
-
 <footer class="footer">
   <div class="footer-inner">
     <nav class="footer-links" aria-label="Footer">
@@ -781,7 +750,7 @@
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="script.js?v=20"></script>
+<script src="script.js?v=21"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));

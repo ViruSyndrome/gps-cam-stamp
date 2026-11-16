@@ -6,10 +6,7 @@
 'use strict';
 
 // Cookie Consent — Accept grants analytics/ads storage
-function acceptCookies() {
-  try { localStorage.setItem('cookieConsent', 'true'); } catch (e) {}
-  var banner = document.getElementById('cookieConsent');
-  if (banner) banner.classList.add('hidden');
+function grantGtagConsent() {
   if (typeof gtag === 'function') {
     gtag('consent', 'update', {
       ad_storage: 'granted',
@@ -20,51 +17,66 @@ function acceptCookies() {
   }
 }
 
-window.addEventListener('load', function () {
+function acceptCookies() {
+  try { localStorage.setItem('cookieConsent', 'true'); } catch (e) {}
   var banner = document.getElementById('cookieConsent');
-  if (!banner) return;
-  try {
-    if (localStorage.getItem('cookieConsent') === 'true') {
-      banner.classList.add('hidden');
-      if (typeof gtag === 'function') {
-        gtag('consent', 'update', {
-          ad_storage: 'granted',
-          analytics_storage: 'granted',
-          ad_user_data: 'granted',
-          ad_personalization: 'granted'
-        });
-      }
-    }
-  } catch (e) {}
-});
+  if (banner) banner.classList.add('hidden');
+  grantGtagConsent();
+}
+window.acceptCookies = acceptCookies;
+
+function initCookieBanner() {
+  var consented = false;
+  try { consented = localStorage.getItem('cookieConsent') === 'true'; } catch (e) {}
+  var banner = document.getElementById('cookieConsent');
+  if (consented) {
+    if (banner) banner.classList.add('hidden');
+    grantGtagConsent();
+    return;
+  }
+  if (!banner && document.body) {
+    banner = document.createElement('div');
+    banner.id = 'cookieConsent';
+    banner.className = 'cookie-banner';
+    var isGuidesSubdir = /\/guides\//i.test(window.location.pathname || '');
+    var privacyHref = isGuidesSubdir ? '../privacy.html' : 'privacy.html';
+    var p = document.createElement('p');
+    p.innerHTML = 'We use cookies for analytics and advertising. By continuing, you accept our <a href="' + privacyHref + '">Privacy Policy</a>.';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Accept';
+    btn.addEventListener('click', acceptCookies);
+    banner.appendChild(p);
+    banner.appendChild(btn);
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+}
 
 // ── State ────────────────────────────────────────────────
-let gpsData        = null;   // { lat, lng, altitude, accuracy, heading, _fixTime, _source }
-let addressData    = null;   // { display_name, road, city, country }
-let capturedImage  = null;   // HTMLImageElement of the current photo
-let currentTab     = 'camera';
+let gpsData         = null;   // { lat, lng, altitude, accuracy, heading, _fixTime, _source }
+let liveGpsData     = null;   // Latest live geolocation fix (never overwritten by EXIF)
+let pendingExifDate = null;   // Preserved DateTimeOriginal when uploaded photo has no EXIF GPS
+let addressData     = null;   // { display_name, road, city, country }
+let capturedImage   = null;   // HTMLImageElement of the current photo
+let currentTab      = 'camera';
 let currentTemplate = 'classic';
-let camStream      = null;
-let facingMode     = 'environment';
-let addressCache   = {};     // lat,lng → address to avoid repeat calls
-let batchImages    = [];     // [{img, filename, jpegBinary?}] for batch mode
-let mapTileImg  = null;   // Map tile Image for map thumbnail (Esri World Imagery)
-let sourceJpegBinary = null; // original uploaded JPEG binary string (for EXIF preserve)
-let mapTilePin  = null;   // {px, py} pin pixel position within 256×256 tile
-let appLogoImg  = null;   // Real SVG logo for the stamp
-let customLogoImg = null; // User uploaded custom logo
-let gpsWatchId  = null;   // watchPosition id while camera is live
-let showingDemo = false;  // marketing sample preview — never used for real stamps
+let camStream       = null;
+let facingMode      = 'environment';
+let addressCache    = {};     // lat,lng → address to avoid repeat calls
+let batchImages     = [];     // [{img, filename, jpegBinary?, exif?}] for batch mode
+let mapTileImg      = null;   // Map tile Image for map thumbnail (Esri World Imagery)
+let sourceJpegBinary = null;  // original uploaded JPEG binary string (for EXIF preserve)
+let mapTilePin      = null;   // {px, py} pin pixel position within 256×256 tile
+let appLogoImg      = null;   // Real SVG/PNG logo for the stamp
+let customLogoImg   = null;   // User uploaded custom logo
+let gpsWatchId      = null;   // watchPosition id while camera is live
+let showingDemo     = false;  // marketing sample preview — never used for real stamps
 
 // Demo-only sample (marketing preview). Never assigned into gpsData/addressData/weatherData.
 let demoGpsData     = null;
 let demoAddressData = null;
 let demoWeatherData = null;
 let demoImage       = null;
-
-const initLogo = new Image();
-initLogo.onload = () => { appLogoImg = initLogo; };
-initLogo.src = 'assets/favicon-64.png';
 
 let weatherData = null;   // {temp, unit, condition, icon}
 let tempUnit    = 'C';    // 'C' | 'F' — auto-detected from locale/country
@@ -74,6 +86,11 @@ let dateFmt     = 'dmy';  // 'dmy' | 'mdy' | 'iso' — auto-detected from locale
 function hasValidGps() {
   return !!(gpsData && gpsData.lat != null && gpsData.lng != null &&
     Number.isFinite(gpsData.lat) && Number.isFinite(gpsData.lng));
+}
+
+function isSameGpsCoords(lat, lng) {
+  return !!(gpsData && Number.isFinite(gpsData.lat) && Number.isFinite(gpsData.lng) &&
+    Math.abs(gpsData.lat - lat) < 1e-5 && Math.abs(gpsData.lng - lng) < 1e-5);
 }
 
 /** Decimal coords with hemisphere: Lat 40.758000° N  Long 73.985500° W */
@@ -108,16 +125,35 @@ function updateStampActionButtons() {
   }
 }
 
-// ── DOM refs (resolved after DOMContentLoaded) ───────────
+// ── DOM refs (resolved safely after DOMContentLoaded) ────
 let gpsBar, gpsStatus, camVideo, stampCanvas, previewWrap;
+
+function resolveDomRefs() {
+  gpsBar      = gpsBar      || document.getElementById('gpsBar');
+  gpsStatus   = gpsStatus   || document.getElementById('gpsStatus');
+  camVideo    = camVideo    || document.getElementById('camVideo');
+  stampCanvas = stampCanvas || document.getElementById('stampCanvas');
+  previewWrap = previewWrap || document.getElementById('previewWrap');
+}
 
 // ── Init ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  gpsBar      = document.getElementById('gpsBar');
-  gpsStatus   = document.getElementById('gpsStatus');
-  camVideo    = document.getElementById('camVideo');
-  stampCanvas = document.getElementById('stampCanvas');
-  previewWrap = document.getElementById('previewWrap');
+  initCookieBanner();
+  resolveDomRefs();
+
+  if (!document.getElementById('tool')) return;
+
+  const initLogo = new Image();
+  initLogo.onload = () => { appLogoImg = initLogo; };
+  initLogo.src = 'assets/favicon-64.png';
+
+  // Bind toggle checkbox listeners once (prevents quadratic listener leak)
+  document.querySelectorAll('.toggle-label input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.toggle-label')?.classList.toggle('checked', cb.checked);
+    });
+  });
+  syncToggleStyles();
 
   const logoInput = document.getElementById('customLogoInput');
   if (logoInput) {
@@ -130,12 +166,18 @@ document.addEventListener('DOMContentLoaded', () => {
           img.src = evt.target.result;
         };
         reader.readAsDataURL(e.target.files[0]);
-        document.getElementById('clearLogoBtn').style.display = 'block';
+        const clearBtn = document.getElementById('clearLogoBtn');
+        if (clearBtn) clearBtn.style.display = 'block';
       }
     });
   }
 
   detectLocaleDefaults();
+
+  if (window._pendingEnablePermissions) {
+    window._pendingEnablePermissions = false;
+    enablePermissions();
+  }
 });
 
 window.clearCustomLogo = function() {
@@ -148,6 +190,10 @@ window.clearCustomLogo = function() {
 };
 
 window.addEventListener('load', async () => {
+  initCookieBanner();
+  resolveDomRefs();
+  if (!document.getElementById('tool')) return;
+
   setupUpload();
   syncToggleStyles();
   updateCompassAvailability();
@@ -176,6 +222,7 @@ window.addEventListener('load', async () => {
 let permissionsStarted = false;
 
 async function enablePermissions() {
+  resolveDomRefs();
   const btn = document.getElementById('btnEnablePerms');
   if (btn) {
     btn.disabled = true;
@@ -197,9 +244,6 @@ async function enablePermissions() {
   }
 }
 window.enablePermissions = enablePermissions;
-if (window._pendingEnablePermissions) {
-  enablePermissions();
-}
 
 // ── GPS ───────────────────────────────────────────────────
 function stopGPSWatch() {
@@ -212,17 +256,19 @@ function stopGPSWatch() {
 /** Request a GPS fix. Pass { watch: true } to keep updating while the camera is live. */
 function requestGPS(opts = {}) {
   if (!navigator.geolocation) {
-    setGPSStatus('denied', 'GPS not supported by this browser');
+    if (!opts.silent) setGPSStatus('denied', 'GPS not supported by this browser');
     updateStampActionButtons();
     return;
   }
-  setGPSStatus('fetching', 'Getting your location… (may take a few seconds)');
+  if (!opts.silent) {
+    setGPSStatus('fetching', 'Getting your location… (may take a few seconds)');
+  }
   const geoOpts = {
     enableHighAccuracy: true,
     timeout: 20000,
     maximumAge: 0
   };
-  navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, geoOpts);
+  navigator.geolocation.getCurrentPosition(onGPSSuccess, opts.silent ? () => {} : onGPSError, geoOpts);
   if (opts.watch) {
     stopGPSWatch();
     gpsWatchId = navigator.geolocation.watchPosition(onGPSSuccess, onGPSError, {
@@ -234,7 +280,27 @@ function requestGPS(opts = {}) {
 }
 
 function onGPSSuccess(pos) {
-  const prevHeading = (gpsData && gpsData.heading != null && !Number.isNaN(gpsData.heading)) ? gpsData.heading : null;
+  const prevHeading = (liveGpsData && liveGpsData.heading != null && !Number.isNaN(liveGpsData.heading))
+    ? liveGpsData.heading
+    : ((gpsData && gpsData.heading != null && !Number.isNaN(gpsData.heading)) ? gpsData.heading : null);
+
+  const freshLive = {
+    lat:      pos.coords.latitude,
+    lng:      pos.coords.longitude,
+    altitude: pos.coords.altitude,
+    accuracy: pos.coords.accuracy,
+    heading:  (pos.coords.heading != null && !Number.isNaN(pos.coords.heading)) ? pos.coords.heading : prevHeading,
+    speed:    pos.coords.speed,
+    _fixTime: Date.now(),
+    _source:  'live'
+  };
+  liveGpsData = freshLive;
+
+  // Never let background watchPosition overwrite an already-captured or EXIF-stamped preview
+  const previewLocked = !showingDemo && capturedImage && previewWrap &&
+    !previewWrap.classList.contains('hidden') && hasValidGps();
+  if (previewLocked) return;
+
   // Fresh live fix — drop stale address/weather/map from any previous location
   clearLocationDerivedData();
   if (showingDemo) {
@@ -245,16 +311,10 @@ function onGPSSuccess(pos) {
       if (previewWrap) previewWrap.classList.add('hidden');
     }
   }
-  gpsData = {
-    lat:      pos.coords.latitude,
-    lng:      pos.coords.longitude,
-    altitude: pos.coords.altitude,
-    accuracy: pos.coords.accuracy,
-    heading:  (pos.coords.heading != null && !Number.isNaN(pos.coords.heading)) ? pos.coords.heading : prevHeading,
-    speed:    pos.coords.speed,
-    _fixTime: Date.now(),
-    _source:  'live'
-  };
+  gpsData = { ...freshLive };
+  if (pendingExifDate && capturedImage) {
+    gpsData._exifDate = pendingExifDate;
+  }
   const lat = gpsData.lat.toFixed(5);
   const lng = gpsData.lng.toFixed(5);
   const acc = gpsData.accuracy != null ? ` (±${Math.round(gpsData.accuracy)} m)` : '';
@@ -300,6 +360,7 @@ function checkGpsQuality() {
 
 // Compass heading from DeviceOrientation (geolocation.heading is often null when stationary)
 let compassListening = false;
+let hasAbsoluteOrientation = false;
 function updateCompassAvailability() {
   const hint = document.getElementById('compassHint');
   const label = document.getElementById('compassToggleLabel');
@@ -356,11 +417,18 @@ async function ensureCompassHeading() {
 }
 
 function onDeviceOrientation(e) {
+  const hasWebkit = typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading);
+  const isAbsolute = e.type === 'deviceorientationabsolute' || e.absolute === true || hasWebkit;
+  if (isAbsolute) {
+    hasAbsoluteOrientation = true;
+  } else if (hasAbsoluteOrientation) {
+    // Do not let relative deviceorientation overwrite deviceorientationabsolute
+    return;
+  }
+
   let heading = null;
-  if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) {
+  if (hasWebkit) {
     heading = e.webkitCompassHeading;
-  } else if (e.absolute === true && typeof e.alpha === 'number' && e.alpha != null) {
-    heading = (360 - e.alpha) % 360;
   } else if (typeof e.alpha === 'number' && e.alpha != null) {
     heading = (360 - e.alpha) % 360;
   }
@@ -376,18 +444,30 @@ function onDeviceOrientation(e) {
 }
 
 function setGPSStatus(state, text) {
-  gpsBar.className = 'gps-bar ' + state;
-  gpsStatus.textContent = text;
+  resolveDomRefs();
+  if (gpsBar) gpsBar.className = 'gps-bar ' + state;
+  if (gpsStatus) gpsStatus.textContent = text;
 }
 
 // ── Reverse Geocode (OpenStreetMap Nominatim — free, no key) ──
 async function fetchAddress(lat, lng) {
   const key = lat.toFixed(4) + ',' + lng.toFixed(4);
-  if (addressCache[key]) { addressData = addressCache[key]; return; }
+  if (addressCache[key]) {
+    if (!isSameGpsCoords(lat, lng)) return;
+    addressData = addressCache[key];
+    refineTempUnit(addressData.country);
+    if (addressData.road) {
+      setGPSStatus('found', `📍 ${[addressData.road, addressData.city, addressData.state].filter(Boolean).join(', ')}`);
+    }
+    if (capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) redrawStamp();
+    return;
+  }
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`;
     const res  = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'GPSCamStamp/1.0 (https://www.gpscamstamp.com; hello@gpscamstamp.com)' } });
+    if (!res.ok) return;
     const json = await res.json();
+    if (!isSameGpsCoords(lat, lng)) return;
     addressData = {
       display_name: json.display_name || '',
       road:    json.address?.road || json.address?.suburb || '',
@@ -403,7 +483,7 @@ async function fetchAddress(lat, lng) {
       setGPSStatus('found', `📍 ${[addressData.road, addressData.city, addressData.state].filter(Boolean).join(', ')}`);
     }
     // Refresh preview if already showing
-    if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
+    if (capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) redrawStamp();
   } catch (_) {
     // Silently fail — lat/lng will still show on stamp
   }
@@ -431,7 +511,7 @@ function refineTempUnit(country) {
   const fahr = ['United States', 'Liberia', 'Myanmar'];
   const prev = tempUnit;
   tempUnit = fahr.some(c => country.includes(c)) ? 'F' : 'C';
-  if (tempUnit !== prev) { updateFmtUI(); if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp(); }
+  if (tempUnit !== prev) { updateFmtUI(); if (capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) redrawStamp(); }
 }
 
 function updateFmtUI() {
@@ -481,19 +561,31 @@ function latLngToTilePixel(lat, lng, zoom) {
 async function fetchMapTile(lat, lng) {
   const zoom = 18; // Increased from 16 for a more zoomed-in street/building level view
   const { tx, ty, px, py } = latLngToTilePixel(lat, lng, zoom);
+  if (!isSameGpsCoords(lat, lng)) return;
   mapTilePin = { px, py };
   try {
-    const res     = await fetch(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`);
+    const res = await fetch(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`);
+    if (!res.ok || !isSameGpsCoords(lat, lng)) return;
     const blob    = await res.blob();
+    if (!isSameGpsCoords(lat, lng)) return;
     const blobUrl = URL.createObjectURL(blob);
-    const img     = new Image();
-    img.onload    = () => {
-      URL.revokeObjectURL(blobUrl);
-      mapTileImg = img;
-      if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
-    };
-    img.onerror = () => URL.revokeObjectURL(blobUrl);
-    img.src = blobUrl;
+    await new Promise(resolve => {
+      const img     = new Image();
+      img.onload    = () => {
+        URL.revokeObjectURL(blobUrl);
+        if (isSameGpsCoords(lat, lng)) {
+          mapTileImg = img;
+          mapTilePin = { px, py };
+          if (capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) redrawStamp();
+        }
+        resolve();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        resolve();
+      };
+      img.src = blobUrl;
+    });
   } catch (_) {
     // Map tile unavailable (offline/CORS) — stamp works without thumbnail
   }
@@ -504,12 +596,14 @@ async function fetchWeather(lat, lng) {
   try {
     const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current_weather=true&timezone=auto`;
     const res  = await fetch(url);
+    if (!res.ok) return;
     const json = await res.json();
+    if (!isSameGpsCoords(lat, lng)) return;
     const cw   = json.current_weather;
     if (!cw) return;
     const [icon, condition] = WMO_MAP[cw.weathercode] || ['🌡', 'Unknown'];
     weatherData = { temp: Math.round(cw.temperature), unit: '°C', condition, icon };
-    if (capturedImage && !previewWrap.classList.contains('hidden')) redrawStamp();
+    if (capturedImage && previewWrap && !previewWrap.classList.contains('hidden')) redrawStamp();
   } catch (_) {
     // Weather unavailable — stamp works without weather data
   }
@@ -599,7 +693,10 @@ function capturePhoto() {
   if (quality.warn && !confirm(quality.msg)) return;
 
   showingDemo = false;
+  pendingExifDate = null;
   sourceJpegBinary = null;
+  // Snapshot live GPS onto the captured photo so background watchPosition doesn't mutate it
+  if (gpsData) gpsData = { ...gpsData };
   const canvas = document.createElement('canvas');
   canvas.width  = camVideo.videoWidth  || 1280;
   canvas.height = camVideo.videoHeight || 720;
@@ -607,7 +704,7 @@ function capturePhoto() {
   const img = new Image();
   img.onload = () => {
     capturedImage = img;
-    batchImages = [{ img, filename: 'photo', jpegBinary: null }];
+    batchImages = [{ img, filename: 'photo', jpegBinary: null, exif: null }];
     showPreview();
   };
   img.src = canvas.toDataURL('image/jpeg', 0.92);
@@ -617,8 +714,13 @@ function capturePhoto() {
 function setupUpload() {
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
+  if (!dropZone || !fileInput) return;
 
-  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  fileInput.addEventListener('change', e => {
+    const selected = Array.from(e.target.files || []);
+    e.target.value = '';
+    handleFiles(selected);
+  });
 
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -644,47 +746,82 @@ function isJpegFile(file) {
 }
 
 function handleFiles(files) {
-  const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+  const imageFiles = Array.from(files || []).filter(f =>
+    (f.type && f.type.startsWith('image/')) ||
+    /\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i.test(f.name || '')
+  );
   if (!imageFiles.length) return;
+
+  // Clear previous photo/EXIF state so Photo A's coordinates never leak onto Photo B or new batches
   showingDemo = false;
+  capturedImage = null;
   batchImages = [];
   sourceJpegBinary = null;
-  let loaded = 0;
+  gpsData = null;
+  pendingExifDate = null;
+  clearLocationDerivedData();
+  setExifWriteNote('');
+  updateStampActionButtons();
+
+  let settled = 0;
+  let failedCount = 0;
+  const loadedSlots = new Array(imageFiles.length);
+
+  const finishOne = () => {
+    settled++;
+    if (settled === imageFiles.length) afterImagesReady();
+  };
 
   const afterImagesReady = async () => {
+    batchImages = loadedSlots.filter(Boolean);
+    if (!batchImages.length) {
+      if (previewWrap) previewWrap.classList.add('hidden');
+      setGPSStatus('denied', 'Could not load image (unsupported format like HEIC, or corrupt file). Try JPG, PNG, or WEBP.');
+      updateStampActionButtons();
+      return;
+    }
+
     capturedImage = batchImages[0].img;
     sourceJpegBinary = batchImages[0].jpegBinary || null;
     showPreview();
 
-    const needLiveGps = () => {
-      if (!hasValidGps()) return true;
-      if (gpsData._source === 'exif') return false;
-      return !checkGpsQuality().ok;
-    };
+    const firstExif = batchImages[0].exif;
+    const anyMissingGps = batchImages.some(item => !item.exif || item.exif.lat == null || item.exif.lng == null);
 
-    // Single-file: prefer EXIF GPS; otherwise request live location
-    if (imageFiles.length === 1) {
-      const exif = await readExifFromFile(imageFiles[0]);
-      if (exif && exif.lat != null && exif.lng != null) {
-        applyExifData(exif);
-      } else {
-        if (exif && exif.datetime) applyExifData(exif);
-        if (needLiveGps()) {
-          setGPSStatus('fetching', 'No GPS in photo — requesting your current location…');
-          requestGPS();
-        }
+    if (firstExif && firstExif.lat != null && firstExif.lng != null) {
+      applyExifData(firstExif);
+      if (batchImages.length > 1 && anyMissingGps) {
+        // Fetch live GPS silently for other batch photos that lack EXIF GPS
+        requestGPS({ silent: true });
       }
-    } else if (needLiveGps()) {
-      setGPSStatus('fetching', 'Requesting location to stamp uploaded photos…');
+    } else {
+      if (firstExif && firstExif.datetime) {
+        applyExifData(firstExif);
+      }
+      setGPSStatus('fetching', batchImages.length > 1
+        ? 'Requesting location to stamp uploaded photos…'
+        : 'No GPS in photo — requesting your current location…');
       requestGPS();
+    }
+
+    if (failedCount > 0) {
+      setExifWriteNote(`${failedCount} file${failedCount > 1 ? 's' : ''} could not be decoded (unsupported format like HEIC or corrupt image) and ${failedCount > 1 ? 'were' : 'was'} skipped.`);
     }
     updateStampActionButtons();
   };
 
-  imageFiles.forEach(file => {
+  imageFiles.forEach((file, idx) => {
     const reader = new FileReader();
+    reader.onerror = () => {
+      failedCount++;
+      finishOne();
+    };
     reader.onload = e => {
       const img = new Image();
+      img.onerror = () => {
+        failedCount++;
+        finishOne();
+      };
       img.onload = async () => {
         let jpegBinary = null;
         if (isJpegFile(file)) {
@@ -692,9 +829,14 @@ function handleFiles(files) {
             jpegBinary = arrayBufferToBinaryString(await file.arrayBuffer());
           } catch (_) { jpegBinary = null; }
         }
-        batchImages.push({ img, filename: file.name.replace(/\.[^.]+$/, ''), jpegBinary });
-        loaded++;
-        if (loaded === imageFiles.length) afterImagesReady();
+        const exif = await readExifFromFile(file);
+        loadedSlots[idx] = {
+          img,
+          filename: (file.name || 'photo').replace(/\.[^.]+$/, ''),
+          jpegBinary,
+          exif
+        };
+        finishOne();
       };
       img.src = e.target.result;
     };
@@ -708,116 +850,162 @@ function readExifFromFile(file) {
     const reader = new FileReader();
     reader.onload = e => resolve(parseExifGPS(e.target.result));
     reader.onerror = () => resolve(null);
-    // Only need the first 128KB to find EXIF in most JPEGs
-    reader.readAsArrayBuffer(file.slice(0, 131072));
+    // Read up to 256KB to find EXIF even when XMP/ICC precedes it
+    reader.readAsArrayBuffer(file.slice(0, 262144));
   });
 }
 
 function parseExifGPS(buffer) {
-  const view = new DataView(buffer);
-  // Must start with JPEG SOI marker FF D8
-  if (view.getUint16(0) !== 0xFFD8) return null;
-  let offset = 2;
-  while (offset < view.byteLength - 2) {
-    const marker = view.getUint16(offset);
-    if (marker === 0xFFE1) { // APP1 = EXIF
-      return parseApp1(view, offset + 4);
+  try {
+    if (!(buffer instanceof ArrayBuffer) || buffer.byteLength < 4) return null;
+    const view = new DataView(buffer);
+    // Must start with JPEG SOI marker FF D8
+    if (view.getUint16(0) !== 0xFFD8) return null;
+    let offset = 2;
+    while (offset + 2 <= view.byteLength) {
+      const marker = view.getUint16(offset);
+      if ((marker & 0xFF00) !== 0xFF00) break;
+      if (marker === 0xFFDA || marker === 0xFFD9) break; // SOS or EOI
+      if (marker === 0xFF01 || (marker >= 0xFFD0 && marker <= 0xFFD8)) {
+        offset += 2;
+        continue;
+      }
+      if (offset + 4 > view.byteLength) break;
+      const segLen = view.getUint16(offset + 2);
+      if (segLen < 2 || offset + 2 + segLen > view.byteLength) break;
+      if (marker === 0xFFE1) { // APP1 — may be EXIF or non-EXIF (e.g. XMP); keep scanning if non-EXIF
+        const parsed = parseApp1(view, offset + 4, offset + 2 + segLen);
+        if (parsed) return parsed;
+      }
+      offset += 2 + segLen;
     }
-    if ((marker & 0xFF00) !== 0xFF00) break;
-    offset += 2 + view.getUint16(offset + 2);
+    return null;
+  } catch (_) {
+    return null;
   }
-  return null;
 }
 
-function parseApp1(view, start) {
-  // Check for "Exif\0\0" header
-  const exifHeader = String.fromCharCode(
-    view.getUint8(start), view.getUint8(start+1),
-    view.getUint8(start+2), view.getUint8(start+3)
-  );
-  if (exifHeader !== 'Exif') return null;
-  const tiffStart = start + 6;
-  const littleEndian = view.getUint16(tiffStart) === 0x4949;
-  const readUint16 = o => view.getUint16(tiffStart + o, littleEndian);
-  const readUint32 = o => view.getUint32(tiffStart + o, littleEndian);
+function parseApp1(view, start, end) {
+  try {
+    const maxEnd = Math.min(end != null ? end : view.byteLength, view.byteLength);
+    if (start < 0 || start + 14 > maxEnd) return null;
 
-  // IFD0 offset
-  const ifd0 = readUint32(4);
-  const ifd0Entries = readUint16(ifd0);
-  let gpsIFDOffset = null, subIFDOffset = null;
+    // Check for "Exif\0\0" header (skip XMP or other APP1 markers)
+    if (view.getUint32(start) !== 0x45786966 || view.getUint16(start + 4) !== 0x0000) return null;
 
-  for (let i = 0; i < ifd0Entries; i++) {
-    const eOff = ifd0 + 2 + i * 12;
-    const tag = readUint16(eOff);
-    if (tag === 0x8825) gpsIFDOffset = readUint32(eOff + 8);  // GPS IFD
-    if (tag === 0x8769) subIFDOffset = readUint32(eOff + 8);  // Exif SubIFD
-  }
+    const tiffStart = start + 6;
+    const byteOrder = view.getUint16(tiffStart);
+    if (byteOrder !== 0x4949 && byteOrder !== 0x4D4D) return null;
+    const littleEndian = byteOrder === 0x4949;
 
-  const result = {};
+    const inBounds = (o, size) => o >= 0 && (tiffStart + o + size) <= maxEnd;
+    const readUint8  = o => { if (!inBounds(o, 1)) throw new RangeError('EXIF OOB'); return view.getUint8(tiffStart + o); };
+    const readUint16 = o => { if (!inBounds(o, 2)) throw new RangeError('EXIF OOB'); return view.getUint16(tiffStart + o, littleEndian); };
+    const readUint32 = o => { if (!inBounds(o, 4)) throw new RangeError('EXIF OOB'); return view.getUint32(tiffStart + o, littleEndian); };
 
-  // Parse GPS IFD
-  if (gpsIFDOffset !== null) {
-    const gpsEntries = readUint16(gpsIFDOffset);
-    const gps = {};
-    for (let i = 0; i < gpsEntries; i++) {
-      const eOff = gpsIFDOffset + 2 + i * 12;
-      const tag  = readUint16(eOff);
-      const type = readUint16(eOff + 2);
-      const count = readUint32(eOff + 4);
-      const valOff = eOff + 8;
-      if (type === 5) { // RATIONAL
-        // RATIONAL is 8 bytes, never fits the 4-byte inline field — always stored at offset
-        const dataOff = readUint32(valOff);
-        const readRat = (o) => {
-          const n = view.getUint32(tiffStart + o, littleEndian);
-          const d = view.getUint32(tiffStart + o + 4, littleEndian);
-          return d ? n / d : 0;
-        };
-        if (tag === 2) gps.lat = [readRat(dataOff), readRat(dataOff+8), readRat(dataOff+16)]; // GPSLatitude
-        if (tag === 4) gps.lng = [readRat(dataOff), readRat(dataOff+8), readRat(dataOff+16)]; // GPSLongitude
-        if (tag === 6) gps.alt = readRat(dataOff);                                              // GPSAltitude
-      }
-      if (type === 2) { // ASCII
-        const strOff = count <= 4 ? valOff : readUint32(valOff);
-        let str = '';
-        for (let c = 0; c < count - 1; c++) str += String.fromCharCode(view.getUint8(tiffStart + strOff + c));
-        if (tag === 1) gps.latRef = str;  // N/S
-        if (tag === 3) gps.lngRef = str;  // E/W
-        if (tag === 5) gps.altRef = view.getUint8(valOff); // 0=above, 1=below
-      }
+    // IFD0 offset
+    const ifd0 = readUint32(4);
+    const ifd0Entries = readUint16(ifd0);
+    let gpsIFDOffset = null, subIFDOffset = null;
+
+    for (let i = 0; i < ifd0Entries; i++) {
+      const eOff = ifd0 + 2 + i * 12;
+      const tag = readUint16(eOff);
+      if (tag === 0x8825) gpsIFDOffset = readUint32(eOff + 8);  // GPS IFD
+      if (tag === 0x8769) subIFDOffset = readUint32(eOff + 8);  // Exif SubIFD
     }
-    if (gps.lat && gps.lng) {
-      const toDecimal = (dms) => dms[0] + dms[1]/60 + dms[2]/3600;
-      result.lat = toDecimal(gps.lat) * (gps.latRef === 'S' ? -1 : 1);
-      result.lng = toDecimal(gps.lng) * (gps.lngRef === 'W' ? -1 : 1);
-      if (gps.alt !== undefined) result.altitude = gps.alt * (gps.altRef === 1 ? -1 : 1);
-    }
-  }
 
-  // Parse Exif SubIFD for DateTimeOriginal (tag 0x9003)
-  if (subIFDOffset !== null) {
-    const subEntries = readUint16(subIFDOffset);
-    for (let i = 0; i < subEntries; i++) {
-      const eOff = subIFDOffset + 2 + i * 12;
-      const tag  = readUint16(eOff);
-      if (tag === 0x9003) { // DateTimeOriginal
+    const result = {};
+
+    // Parse GPS IFD
+    if (gpsIFDOffset !== null) {
+      const gpsEntries = readUint16(gpsIFDOffset);
+      const gps = {};
+      for (let i = 0; i < gpsEntries; i++) {
+        const eOff = gpsIFDOffset + 2 + i * 12;
+        const tag  = readUint16(eOff);
+        const type = readUint16(eOff + 2);
         const count = readUint32(eOff + 4);
-        const strOff = count <= 4 ? eOff + 8 : readUint32(eOff + 8);
-        let str = '';
-        for (let c = 0; c < count - 1; c++) str += String.fromCharCode(view.getUint8(tiffStart + strOff + c));
-        // Format: "YYYY:MM:DD HH:MM:SS"
-        const m = str.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
-        if (m) result.datetime = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
-        break;
+        const valOff = eOff + 8;
+        if (type === 5 || type === 10) { // RATIONAL / SRATIONAL
+          const dataOff = readUint32(valOff);
+          const readRat = (o) => {
+            const n = readUint32(o);
+            const d = readUint32(o + 4);
+            return d ? n / d : 0;
+          };
+          if (tag === 2 && count >= 3) gps.lat = [readRat(dataOff), readRat(dataOff + 8), readRat(dataOff + 16)]; // GPSLatitude
+          if (tag === 4 && count >= 3) gps.lng = [readRat(dataOff), readRat(dataOff + 8), readRat(dataOff + 16)]; // GPSLongitude
+          if (tag === 6 && count >= 1) gps.alt = readRat(dataOff);                                                // GPSAltitude
+        } else if (type === 1) { // BYTE (GPSAltitudeRef per EXIF spec)
+          if (tag === 5 && count >= 1) {
+            gps.altRef = count <= 4 ? readUint8(valOff) : readUint8(readUint32(valOff));
+          }
+        } else if (type === 3) { // SHORT
+          if (tag === 5 && count >= 1) {
+            gps.altRef = count <= 2 ? readUint16(valOff) : readUint16(readUint32(valOff));
+          }
+        } else if (type === 2 && count > 0) { // ASCII
+          const strOff = count <= 4 ? valOff : readUint32(valOff);
+          let str = '';
+          for (let c = 0; c < count; c++) {
+            const ch = readUint8(strOff + c);
+            if (ch === 0) break;
+            str += String.fromCharCode(ch);
+          }
+          str = str.trim();
+          if (tag === 1) gps.latRef = str;  // N/S
+          if (tag === 3) gps.lngRef = str;  // E/W
+          if (tag === 5) gps.altRef = parseInt(str, 10) || 0;
+        }
+      }
+      if (gps.lat && gps.lng && gps.lat.every(Number.isFinite) && gps.lng.every(Number.isFinite)) {
+        const toDecimal = (dms) => dms[0] + dms[1] / 60 + dms[2] / 3600;
+        const lat = toDecimal(gps.lat) * (gps.latRef === 'S' ? -1 : 1);
+        const lng = toDecimal(gps.lng) * (gps.lngRef === 'W' ? -1 : 1);
+        if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+          result.lat = lat;
+          result.lng = lng;
+          if (gps.alt !== undefined && Number.isFinite(gps.alt)) {
+            result.altitude = gps.alt * (gps.altRef === 1 ? -1 : 1);
+          }
+        }
       }
     }
-  }
 
-  return Object.keys(result).length ? result : null;
+    // Parse Exif SubIFD for DateTimeOriginal (tag 0x9003) — preserved even without GPS
+    if (subIFDOffset !== null) {
+      const subEntries = readUint16(subIFDOffset);
+      for (let i = 0; i < subEntries; i++) {
+        const eOff = subIFDOffset + 2 + i * 12;
+        const tag  = readUint16(eOff);
+        if (tag === 0x9003) { // DateTimeOriginal
+          const count = readUint32(eOff + 4);
+          if (count > 0) {
+            const strOff = count <= 4 ? eOff + 8 : readUint32(eOff + 8);
+            let str = '';
+            for (let c = 0; c < count; c++) {
+              const ch = readUint8(strOff + c);
+              if (ch === 0) break;
+              str += String.fromCharCode(ch);
+            }
+            // Format: "YYYY:MM:DD HH:MM:SS"
+            const m = str.trim().match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+            if (m) result.datetime = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+          }
+          break;
+        }
+      }
+    }
+
+    return Object.keys(result).length ? result : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 function applyExifData(exif) {
-  if (exif.lat == null && !exif.datetime) return;
+  if (!exif || (exif.lat == null && !exif.datetime)) return;
 
   let notice = [];
 
@@ -838,10 +1026,8 @@ function applyExifData(exif) {
   }
 
   if (exif.datetime) {
-    if (!hasValidGps()) {
-      // Date-only EXIF must not invent coordinates
-      gpsData = gpsData || null;
-    }
+    // Preserve DateTimeOriginal even when photo has no GPS
+    pendingExifDate = exif.datetime;
     if (gpsData) {
       gpsData._exifDate = exif.datetime;
       notice.push('date from photo EXIF');
@@ -857,6 +1043,8 @@ function applyExifData(exif) {
 
 // ── Preview & Stamp ───────────────────────────────────────
 function showPreview() {
+  resolveDomRefs();
+  if (!previewWrap) return;
   previewWrap.classList.remove('hidden');
   redrawStamp();
   updateStampActionButtons();
@@ -906,13 +1094,26 @@ function drawDemoStamp() {
   }
 }
 
-function drawLocationUnavailable(img, targetCanvas) {
-  const ctx  = targetCanvas.getContext('2d');
-  const maxW = 1920; // Preview always capped for memory safety
+const MAX_CANVAS_PIXELS = 16000000; // ~16MP cap for iOS Safari canvas memory safety
+
+function computeCanvasDimensions(img, maxW) {
   const scale = img.width > maxW ? maxW / img.width : 1;
-  targetCanvas.width  = Math.round(img.width  * scale);
-  targetCanvas.height = Math.round(img.height * scale);
-  ctx.drawImage(img, 0, 0, targetCanvas.width, targetCanvas.height);
+  let w = Math.max(1, Math.round(img.width * scale));
+  let h = Math.max(1, Math.round(img.height * scale));
+  if (w * h > MAX_CANVAS_PIXELS) {
+    const pixelScale = Math.sqrt(MAX_CANVAS_PIXELS / (w * h));
+    w = Math.max(1, Math.floor(w * pixelScale));
+    h = Math.max(1, Math.floor(h * pixelScale));
+  }
+  return { w, h };
+}
+
+function drawLocationUnavailable(img, targetCanvas) {
+  const ctx = targetCanvas.getContext('2d');
+  const { w, h } = computeCanvasDimensions(img, 1920);
+  targetCanvas.width  = w;
+  targetCanvas.height = h;
+  ctx.drawImage(img, 0, 0, w, h);
   const W = targetCanvas.width;
   const H = targetCanvas.height;
   const barH = Math.max(48, Math.round(H * 0.08));
@@ -928,16 +1129,16 @@ function drawLocationUnavailable(img, targetCanvas) {
 }
 
 function drawStampedImage(img, targetCanvas, opts) {
-  const ctx  = targetCanvas.getContext('2d');
+  const ctx = targetCanvas.getContext('2d');
   // Preview stays at ~1920. Download may pass { fullRes: true } when the checkbox is on.
   const wantFull = !!(opts && opts.fullRes && document.getElementById('tog-full-res')?.checked);
   const maxW = wantFull ? Infinity : 1920;
-  const scale = img.width > maxW ? maxW / img.width : 1;
-  targetCanvas.width  = Math.round(img.width  * scale);
-  targetCanvas.height = Math.round(img.height * scale);
-  ctx.drawImage(img, 0, 0, targetCanvas.width, targetCanvas.height);
+  const { w, h } = computeCanvasDimensions(img, maxW);
+  targetCanvas.width  = w;
+  targetCanvas.height = h;
+  ctx.drawImage(img, 0, 0, w, h);
   if (!hasValidGps()) return;
-  drawStamp(ctx, targetCanvas.width, targetCanvas.height);
+  drawStamp(ctx, w, h);
 }
 
 function drawStamp(ctx, W, H) {
@@ -1150,8 +1351,8 @@ function drawMinimal(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass) {
 function drawPro(ctx, lines, W, H, sz, lH, pX, pY, showMap, showCompass) {
   const isLight = document.getElementById('themeToggle')?.value === 'light';
   const heading = getHeadingDeg();
-  // Slightly wider on tall phone shots so text/map still fit like rival apps
-  const panelW = Math.max(220, Math.min(520, Math.round(W * (H > W ? 0.36 : 0.32))));
+  // Scale panel proportionally with W (no 520px cap) so full-resolution exports match preview layout
+  const panelW = Math.max(220, Math.round(W * (H > W ? 0.36 : 0.32)));
   const headerH = Math.round(sz * 2.1);
   const compassSz = showCompass ? Math.round(Math.min(panelW - pX * 2, sz * 4.5)) : 0;
 
@@ -1264,6 +1465,7 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
+  const isLight = document.getElementById('themeToggle')?.value === 'light';
   const FONT    = STAMP_FONT;
   const now     = (gpsData && gpsData._exifDate) ? gpsData._exifDate : new Date();
   const accentH = Math.max(4, Math.round(sz * 0.15));
@@ -1274,6 +1476,7 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
   const mapGap  = showMap ? Math.round(padX * 1.2) : 0;
   const heading = getHeadingDeg();
   const compassSz = showCompass ? Math.round(sz * 3.4) : 0;
+  const compassReserve = showCompass ? compassSz + Math.round(padX * 0.6) : 0;
 
   // Brand chip sized first so title never runs under it
   const smSz    = Math.round(sz * 0.72);
@@ -1286,6 +1489,7 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
   const brandReserve = brandW + Math.round(padX * 0.8);
 
   const textAreaW = cardW - (showMap ? mapSz + mapGap : 0) - padX * 2;
+  const bodyMaxW  = Math.max(60, textAreaW - compassReserve);
 
   let cityLine = '';
   let fullAddr = '';
@@ -1317,22 +1521,27 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
 
   const extraLines = buildExtraLines({ skipCompassText: true });
 
-  // Title wraps around the brand chip on the first line(s)
+  // Title wraps around the brand chip on the first line(s); lower lines stay clear of compass dial
   ctx.font = `bold ${titleSz}px ${FONT}`;
   const titleLines = cityLine ? wrapText(ctx, cityLine, Math.max(40, textAreaW - brandReserve)) : [];
   ctx.font = `${bodySz}px ${FONT}`;
-  const addrLines  = fullAddr ? wrapText(ctx, fullAddr, textAreaW) : [];
+  const addrLines  = fullAddr ? wrapText(ctx, fullAddr, bodyMaxW) : [];
+  ctx.font = `${smSz}px ${FONT}`;
+  const coordLines = coordLine ? wrapText(ctx, coordLine, bodyMaxW) : [];
+  const dateLines  = dateStr ? wrapText(ctx, dateStr, bodyMaxW) : [];
+  const wrappedExtra = [];
+  extraLines.forEach(l => wrappedExtra.push(...wrapText(ctx, l, bodyMaxW)));
 
   const textH =
-    Math.max(titleLines.length * titleSz * 1.35, brandH + titleSz * 0.2) +
+    Math.max(titleLines.length * titleSz * 1.35, brandH + titleSz * 0.25) +
     (addrLines.length ? addrLines.length * bodySz * 1.25 + bodySz * 0.35 : 0) +
-    (coordLine ? smSz * 1.35 : 0) +
-    (dateStr   ? smSz * 1.35 : 0) +
-    extraLines.length * smSz * 1.2 +
-    (showCompass ? compassSz * 0.15 : 0) +
+    coordLines.length * smSz * 1.35 +
+    dateLines.length  * smSz * 1.35 +
+    wrappedExtra.length * smSz * 1.2 +
     padY * 0.4;
 
-  const contentH = Math.max(textH, showMap ? mapSz : 0, showCompass ? compassSz : 0);
+  const rightColH = brandH + padY * 0.4 + (showCompass ? compassSz + padY * 0.35 : 0);
+  const contentH = Math.max(textH, showMap ? mapSz : 0, rightColH);
   const cardH    = Math.round(contentH + padY * 2 + accentH);
   const cardY    = H - cardH - Math.round(H * 0.015);
 
@@ -1340,12 +1549,12 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
   ctx.shadowColor   = 'rgba(0,0,0,0.42)';
   ctx.shadowBlur    = Math.round(sz * 1.4);
   ctx.shadowOffsetY = Math.round(sz * 0.35);
-  ctx.fillStyle     = 'rgba(255,255,255,0.97)';
+  ctx.fillStyle     = isLight ? 'rgba(255,255,255,0.97)' : 'rgba(15,23,42,0.92)';
   roundRect(ctx, cardX, cardY, cardW, cardH, Math.round(sz * 0.45));
   ctx.fill();
   ctx.restore();
 
-  ctx.fillStyle = '#0ea5e9';
+  ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
   roundRect(ctx, cardX, cardY, cardW, accentH, Math.round(sz * 0.45));
   ctx.fill();
   // Cover bottom radii of accent so it's a clean strip
@@ -1366,7 +1575,7 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
   // Brand chip top-right of text column (never over title)
   const bX = cardX + cardW - brandW - Math.round(padX * 0.55);
   const bY = cardY + accentH + Math.round(padY * 0.35);
-  ctx.fillStyle = '#0ea5e9';
+  ctx.fillStyle = isLight ? '#0284c7' : '#0ea5e9';
   roundRect(ctx, bX, bY, brandW, brandH, 4);
   ctx.fill();
   ctx.fillStyle = '#fff';
@@ -1377,37 +1586,37 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
 
   if (titleLines.length) {
     ctx.font = `bold ${titleSz}px ${FONT}`;
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = isLight ? '#111827' : '#f8fafc';
     titleLines.forEach(l => { ctx.fillText(l, textX, textY); textY += titleSz * 1.35; });
     textY = Math.max(textY, bY + brandH + bodySz * 0.25);
     textY += bodySz * 0.15;
+  } else {
+    textY = Math.max(textY, bY + brandH + bodySz * 0.25);
   }
 
   if (addrLines.length) {
     ctx.font = `${bodySz}px ${FONT}`;
-    ctx.fillStyle = '#374151';
+    ctx.fillStyle = isLight ? '#374151' : '#cbd5e1';
     addrLines.forEach(l => { ctx.fillText(l, textX, textY); textY += bodySz * 1.25; });
     textY += bodySz * 0.15;
   }
 
-  if (coordLine) {
+  if (coordLines.length) {
     ctx.font = `${smSz}px ${FONT}`;
-    ctx.fillStyle = '#6b7280';
-    ctx.fillText(coordLine, textX, textY);
-    textY += smSz * 1.35;
+    ctx.fillStyle = isLight ? '#4b5563' : '#94a3b8';
+    coordLines.forEach(l => { ctx.fillText(l, textX, textY); textY += smSz * 1.35; });
   }
 
-  if (dateStr) {
+  if (dateLines.length) {
     ctx.font = `${smSz}px ${FONT}`;
-    ctx.fillStyle = '#6b7280';
-    ctx.fillText(dateStr, textX, textY);
-    textY += smSz * 1.35;
+    ctx.fillStyle = isLight ? '#4b5563' : '#94a3b8';
+    dateLines.forEach(l => { ctx.fillText(l, textX, textY); textY += smSz * 1.35; });
   }
 
-  if (extraLines.length) {
+  if (wrappedExtra.length) {
     ctx.font = `${smSz}px ${FONT}`;
-    ctx.fillStyle = '#9ca3af';
-    extraLines.forEach(l => {
+    ctx.fillStyle = isLight ? '#6b7280' : '#94a3b8';
+    wrappedExtra.forEach(l => {
       if (textY + smSz < cardY + cardH - mapPad) {
         ctx.fillText(l, textX, textY);
         textY += smSz * 1.2;
@@ -1419,7 +1628,7 @@ function drawCard(ctx, W, H, sz, padX, padY, showMap, showCompass) {
     const r = compassSz * 0.42;
     const cx = cardX + cardW - padX - compassSz / 2;
     const cy = cardY + cardH - padY - compassSz / 2;
-    drawCompassDial(ctx, cx, cy, r, heading, true);
+    drawCompassDial(ctx, cx, cy, r, heading, isLight);
   }
 
   ctx.textBaseline = 'alphabetic';
@@ -1477,12 +1686,20 @@ function drawMapThumb(ctx, x, y, w, h, tileImg, pin) {
   ctx.strokeStyle = 'rgba(14,165,233,0.7)';
   ctx.lineWidth = 1.5;
   ctx.strokeRect(x, y, w, h);
-  // Map attribution (ArcGIS World Imagery tiles require Esri attribution)
-  ctx.font = `${Math.max(7, Math.round(Math.min(w,h) * 0.09))}px sans-serif`;
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  // Map attribution (ArcGIS World Imagery tiles require Esri attribution) with contrast pill
+  const attrText = 'Powered by Esri';
+  const attrSz = Math.max(8, Math.round(Math.min(w, h) * 0.09));
+  ctx.font = `600 ${attrSz}px ${STAMP_FONT}`;
+  const attrPadX = Math.max(3, Math.round(attrSz * 0.4));
+  const attrPadY = Math.max(2, Math.round(attrSz * 0.25));
+  const pillW = Math.min(w - 2, ctx.measureText(attrText).width + attrPadX * 2);
+  const pillH = attrSz + attrPadY * 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.68)';
+  ctx.fillRect(x + w - pillW, y + h - pillH, pillW, pillH);
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('Powered by Esri', x + w - 2, y + h - 1);
+  ctx.fillText(attrText, x + w - attrPadX, y + h - attrPadY);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 }
@@ -1639,7 +1856,7 @@ function setExifWriteNote(msg) {
 }
 
 /** Build piexif GPS (+ DateTimeOriginal) object; merge with source EXIF when available. */
-function buildExifBytesForStamp(sourceBinary) {
+function buildExifBytesForStamp(sourceBinary, canvasWidth, canvasHeight) {
   if (typeof piexif === 'undefined') throw new Error('piexif not loaded');
   let exifObj = null;
   if (sourceBinary) {
@@ -1651,6 +1868,20 @@ function buildExifBytesForStamp(sourceBinary) {
   if (!exifObj.GPS) exifObj.GPS = {};
   if (!exifObj.Exif) exifObj.Exif = {};
   if (!exifObj['0th']) exifObj['0th'] = {};
+
+  // Canvas pixels are already oriented upright; clear/reset Orientation and stale thumbnail
+  delete exifObj['0th'][piexif.ImageIFD.Orientation];
+  exifObj['0th'][piexif.ImageIFD.Orientation] = 1;
+  exifObj['1st'] = {};
+  exifObj.thumbnail = null;
+  if (canvasWidth) {
+    exifObj['0th'][piexif.ImageIFD.ImageWidth] = canvasWidth;
+    exifObj.Exif[piexif.ExifIFD.PixelXDimension] = canvasWidth;
+  }
+  if (canvasHeight) {
+    exifObj['0th'][piexif.ImageIFD.ImageLength] = canvasHeight;
+    exifObj.Exif[piexif.ExifIFD.PixelYDimension] = canvasHeight;
+  }
 
   const lat = gpsData.lat;
   const lng = gpsData.lng;
@@ -1705,6 +1936,14 @@ function triggerBlobDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+async function prepareBatchLocationData(targetGps) {
+  if (!targetGps) return;
+  const tasks = [fetchAddress(targetGps.lat, targetGps.lng)];
+  if (chk('tog-map')) tasks.push(fetchMapTile(targetGps.lat, targetGps.lng));
+  if (chk('tog-weather')) tasks.push(fetchWeather(targetGps.lat, targetGps.lng));
+  await Promise.all(tasks);
+}
+
 async function downloadPhoto() {
   if (!capturedImage || showingDemo) return;
   const quality = checkGpsQuality();
@@ -1742,17 +1981,76 @@ async function downloadPhoto() {
     try { await savePhotoToDB(c, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
     updateGalleryTabCount();
   } else {
-    for (let i = 0; i < batchImages.length; i++) {
-      const { img, filename, jpegBinary } = batchImages[i];
-      await new Promise(r => setTimeout(r, i === 0 ? 0 : 400));
-      const c = document.createElement('canvas');
-      drawStampedImage(img, c, { fullRes });
-      await downloadCanvas(c, filename + '_gpsstamped.jpg', {
-        skipSharePrompt: i > 0,
-        writeExif,
-        sourceJpegBinary: jpegBinary || null
-      });
-      try { await savePhotoToDB(c, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
+    const savedState = {
+      gpsData,
+      addressData,
+      weatherData,
+      mapTileImg,
+      mapTilePin
+    };
+    let lastLocKey = hasValidGps() ? `${gpsData.lat.toFixed(5)},${gpsData.lng.toFixed(5)}` : '';
+    let missingGpsCount = 0;
+
+    try {
+      for (let i = 0; i < batchImages.length; i++) {
+        const { img, filename, jpegBinary, exif } = batchImages[i];
+        await new Promise(r => setTimeout(r, i === 0 ? 0 : 400));
+
+        let itemGps = null;
+        if (exif && exif.lat != null && exif.lng != null) {
+          itemGps = {
+            lat: exif.lat,
+            lng: exif.lng,
+            altitude: exif.altitude != null ? exif.altitude : null,
+            accuracy: null, heading: null, speed: null,
+            _exifDate: exif.datetime || null,
+            _fixTime: Date.now(),
+            _source: 'exif'
+          };
+        } else if (liveGpsData) {
+          itemGps = {
+            ...liveGpsData,
+            _exifDate: exif?.datetime || null
+          };
+        }
+
+        const c = document.createElement('canvas');
+        if (itemGps) {
+          const locKey = `${itemGps.lat.toFixed(5)},${itemGps.lng.toFixed(5)}`;
+          gpsData = itemGps;
+          if (locKey !== lastLocKey) {
+            clearLocationDerivedData();
+            await prepareBatchLocationData(itemGps);
+            lastLocKey = locKey;
+          }
+          drawStampedImage(img, c, { fullRes });
+        } else {
+          missingGpsCount++;
+          gpsData = null;
+          clearLocationDerivedData();
+          lastLocKey = '';
+          drawLocationUnavailable(img, c);
+        }
+
+        await downloadCanvas(c, filename + '_gpsstamped.jpg', {
+          skipSharePrompt: i > 0,
+          writeExif: writeExif && !!itemGps,
+          sourceJpegBinary: jpegBinary || null
+        });
+        try { await savePhotoToDB(c, label); } catch (e) { console.warn('[Gallery] Auto-save failed:', e); }
+      }
+    } finally {
+      gpsData = savedState.gpsData;
+      addressData = savedState.addressData;
+      weatherData = savedState.weatherData;
+      mapTileImg = savedState.mapTileImg;
+      mapTilePin = savedState.mapTilePin;
+      if (stampCanvas && capturedImage) {
+        try { redrawStamp(); } catch (_) {}
+      }
+    }
+    if (missingGpsCount > 0) {
+      setExifWriteNote(`${missingGpsCount} photo${missingGpsCount > 1 ? 's' : ''} had no EXIF GPS and no live GPS fix was available.`);
     }
     updateGalleryTabCount();
   }
@@ -1776,7 +2074,7 @@ async function downloadCanvas(canvas, filename, opts = {}) {
   if (writeExif) {
     try {
       let jpeg = await canvasToJpegBinary(canvas, 0.92);
-      const exifBytes = buildExifBytesForStamp(opts.sourceJpegBinary || null);
+      const exifBytes = buildExifBytesForStamp(opts.sourceJpegBinary || null, canvas.width, canvas.height);
       jpeg = piexif.insert(exifBytes, jpeg);
       blob = binaryStringToBlob(jpeg, 'image/jpeg');
     } catch (err) {
@@ -1882,13 +2180,23 @@ function switchTab(tab) {
       btn.setAttribute('aria-selected', t === tab ? 'true' : 'false');
     }
   });
-  if (tab === 'camera') startCamera(); else stopCamera();
+  if (tab === 'camera') {
+    if (gpsData && gpsData._source === 'exif') {
+      gpsData = liveGpsData ? { ...liveGpsData } : null;
+      clearLocationDerivedData();
+    }
+    startCamera();
+  } else {
+    stopCamera();
+  }
   if (tab === 'gallery') renderGallery();
   // Reset preview when switching to camera/upload
   if (tab !== 'gallery') {
     if (previewWrap) previewWrap.classList.add('hidden');
     capturedImage = null;
     batchImages = [];
+    sourceJpegBinary = null;
+    pendingExifDate = null;
     showingDemo = false;
   }
   updateStampActionButtons();
@@ -1910,14 +2218,25 @@ function resetTool() {
   capturedImage = null;
   batchImages = [];
   sourceJpegBinary = null;
+  pendingExifDate = null;
   showingDemo = false;
+  if (gpsData && gpsData._source === 'exif') {
+    gpsData = liveGpsData ? { ...liveGpsData } : null;
+    clearLocationDerivedData();
+  }
   setExifWriteNote('');
-  document.getElementById('customNote').value = '';
-  document.getElementById('projectName').value = '';
+  const noteEl = document.getElementById('customNote');
+  if (noteEl) noteEl.value = '';
+  const projEl = document.getElementById('projectName');
+  if (projEl) projEl.value = '';
+  clearCustomLogo();
   if (currentTab === 'camera') startCamera();
-  else document.getElementById('fileInput').value = '';
+  else {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) fileInput.value = '';
+  }
   updateStampActionButtons();
-  document.getElementById('tool').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('tool')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function toggleFaq(btn) {
@@ -1926,14 +2245,13 @@ function toggleFaq(btn) {
   btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 
-// Keep toggle label styles in sync with checkbox state
+// Keep toggle label styles in sync with checkbox state (listeners bound once in DOMContentLoaded)
 function syncToggleStyles() {
   document.querySelectorAll('.toggle-label input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      cb.closest('.toggle-label').classList.toggle('checked', cb.checked);
-    });
+    cb.closest('.toggle-label')?.classList.toggle('checked', cb.checked);
   });
 }
+window.syncToggleStyles = syncToggleStyles;
 
 
 // --- PWA & UX Enhancements ---
@@ -1977,13 +2295,15 @@ function haptic() {
   if (navigator.vibrate) navigator.vibrate(30);
 }
 
-// Override buttons with haptics
-document.querySelectorAll('button').forEach(btn => {
-  btn.addEventListener('click', haptic);
+// Delegated button haptics (avoids attaching duplicate listeners on secondary pages or dynamic UI)
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.closest && e.target.closest('button')) haptic();
 });
 
 // iOS Install Prompt Logic
 window.addEventListener('load', () => {
+  const iosPrompt = document.getElementById('ios-prompt');
+  if (!iosPrompt) return;
   const isIos = () => {
     const userAgent = window.navigator.userAgent.toLowerCase();
     return /iphone|ipad|ipod/.test(userAgent);
@@ -1991,34 +2311,62 @@ window.addEventListener('load', () => {
   const isStandalone = () => ('standalone' in window.navigator) && window.navigator.standalone;
   
   if (isIos() && !isStandalone()) {
-    const hasSeenPrompt = sessionStorage.getItem('ios-prompt-seen');
-    if (!hasSeenPrompt) {
-      setTimeout(() => {
-        document.getElementById('ios-prompt').classList.remove('hidden');
-        sessionStorage.setItem('ios-prompt-seen', 'true');
-      }, 3000);
-    }
+    try {
+      const hasSeenPrompt = sessionStorage.getItem('ios-prompt-seen');
+      if (!hasSeenPrompt) {
+        setTimeout(() => {
+          iosPrompt.classList.remove('hidden');
+          sessionStorage.setItem('ios-prompt-seen', 'true');
+        }, 3000);
+      }
+    } catch (_) {}
   }
 });
 
 
 
 function wrapText(ctx, text, maxWidth) {
-  const words = text.split(' ');
-  const lines = [];
-  let currentLine = words[0];
+  if (!text) return [];
+  const str = String(text);
+  if (!maxWidth || maxWidth <= 0) return [str];
+  const words = str.split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
 
-  for (let i = 1; i < words.length; i++) {
+  const lines = [];
+  let currentLine = '';
+
+  const splitLongToken = (token) => {
+    let chunk = '';
+    for (let j = 0; j < token.length; j++) {
+      const test = chunk + token[j];
+      if (chunk && ctx.measureText(test).width > maxWidth) {
+        lines.push(chunk);
+        chunk = token[j];
+      } else {
+        chunk = test;
+      }
+    }
+    return chunk;
+  };
+
+  for (let i = 0; i < words.length; i++) {
     const word = words[i];
-    const width = ctx.measureText(currentLine + " " + word).width;
-    if (width < maxWidth) {
-      currentLine += " " + word;
+    const candidate = currentLine ? currentLine + ' ' + word : word;
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      currentLine = candidate;
     } else {
-      lines.push(currentLine);
-      currentLine = word;
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = '';
+      }
+      if (ctx.measureText(word).width > maxWidth) {
+        currentLine = splitLongToken(word);
+      } else {
+        currentLine = word;
+      }
     }
   }
-  lines.push(currentLine);
+  if (currentLine) lines.push(currentLine);
   return lines;
 }
 
@@ -2033,6 +2381,13 @@ const GALLERY_DB_VERSION = 1;
 const GALLERY_STORE      = 'photos';
 let _galleryDB = null;
 let _sessionLabel = '';  // remembered label for this session
+let galleryThumbUrls = []; // track created object URLs so renderGallery() never leaks
+
+function revokeGalleryThumbUrls() {
+  while (galleryThumbUrls.length) {
+    URL.revokeObjectURL(galleryThumbUrls.pop());
+  }
+}
 
 // ── Open / create database ─────────────────────────────────
 function openGalleryDB() {
@@ -2133,13 +2488,8 @@ function redownloadPhoto(id) {
     req.onsuccess = () => {
       const entry = req.result;
       if (!entry || !entry.blob) return;
-      const url = URL.createObjectURL(entry.blob);
-      const a = document.createElement('a');
-      a.href = url;
       const ts = (entry.timestamp || new Date().toISOString()).replace(/[:.]/g, '-').slice(0, 19);
-      a.download = 'GPSCamStamp_' + ts + '.jpg';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      triggerBlobDownload(entry.blob, 'GPSCamStamp_' + ts + '.jpg');
     };
   });
 }
@@ -2184,6 +2534,9 @@ async function renderGallery() {
     }
   }
 
+  // Revoke any previously created thumbnail object URLs before re-rendering
+  revokeGalleryThumbUrls();
+
   // Empty state
   if (photos.length === 0) {
     grid.innerHTML = '';
@@ -2196,7 +2549,11 @@ async function renderGallery() {
 
   // Render cards
   grid.innerHTML = photos.map(p => {
-    const thumbUrl = p.thumbnail ? URL.createObjectURL(p.thumbnail) : '';
+    let thumbUrl = '';
+    if (p.thumbnail) {
+      thumbUrl = URL.createObjectURL(p.thumbnail);
+      galleryThumbUrls.push(thumbUrl);
+    }
     const dateStr  = p.timestamp ? new Date(p.timestamp).toLocaleDateString(undefined, {
       day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     }) : '';
