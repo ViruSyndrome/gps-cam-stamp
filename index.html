@@ -152,6 +152,18 @@
 
   <link rel="stylesheet" href="style.css?v=19" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2959862133855422" crossorigin="anonymous"></script>
+  <script>
+    // Drop third-party ad/in-app WebView bridge errors before Sentry captures them.
+    window.addEventListener('error', function (e) {
+      var msg = (e && (e.message || (e.error && e.error.message))) || '';
+      var src = (e && e.filename) || '';
+      if (/TagError|adsbygoogle|availableWidth|No slot size|zaloJSV2/i.test(msg) || /googlesyndication|googleadservices|adtrafficquality/i.test(src)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return true;
+      }
+    }, true);
+  </script>
   <script defer src="https://js.sentry-cdn.com/699c909d507a75878338bb4685c83e13.min.js" crossorigin="anonymous"></script>
   <script>
     Sentry.onLoad(function() {
@@ -159,12 +171,14 @@
         ignoreErrors: [
           "Script error.",
           /Script error\.?/i,
+          /ErrorEvent/i,
           /ResizeObserver loop/i,
           /runtime\.sendMessage/i,
           /Extension context invalidated/i,
           /adsbygoogle/i,
           /TagError/i,
           /No slot size/i,
+          /zaloJSV2/i,
         ],
         denyUrls: [
           /pagead2\.googlesyndication\.com/i,
@@ -174,8 +188,10 @@
         ],
         beforeSend: function(event) {
           try {
-            var msg = (event && event.message) || (event && event.exception && event.exception.values && event.exception.values[0] && event.exception.values[0].value) || '';
-            if (/TagError|adsbygoogle|availableWidth/i.test(msg)) {
+            var ex = event && event.exception && event.exception.values && event.exception.values[0];
+            var msg = (event && event.message) || (ex && ex.value) || '';
+            var typ = (ex && ex.type) || '';
+            if (/TagError|ErrorEvent/i.test(typ) || /TagError|adsbygoogle|availableWidth|No slot size|Script error|ErrorEvent|zaloJSV2/i.test(msg)) {
               return null;
             }
           } catch (e) {}
