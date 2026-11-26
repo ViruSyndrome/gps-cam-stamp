@@ -117,7 +117,10 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        try:
+            browser = p.chromium.launch(headless=True, channel="chrome")
+        except Exception:
+            browser = p.chromium.launch(headless=True)
 
         page = browser.new_page(viewport={"width": 1280, "height": 900}, device_scale_factor=1)
         page.goto(URL, wait_until="networkidle", timeout=60000)
@@ -197,19 +200,61 @@ def main() -> None:
             is_mobile=True,
             has_touch=True,
         )
-        mobile.goto(URL, wait_until="networkidle", timeout=60000)
+        mobile.goto(URL, wait_until="load", timeout=60000)
         mobile.wait_for_timeout(500)
-        mobile.evaluate("() => { window.__ALTTO_PHOTO_MODE = 'portrait'; window.__ALTTO_TEMPLATE = 'classic'; }")
+        # Landscape photo fills the phone preview. A portrait frame letterboxes
+        # and shrinks the stamp until the address is unreadable.
+        mobile.evaluate("() => { window.__ALTTO_PHOTO_MODE = 'landscape'; window.__ALTTO_TEMPLATE = 'classic'; }")
         mobile.evaluate(SETUP_JS)
+        mobile.evaluate(
+            """() => {
+              const map = document.getElementById('tog-map');
+              if (map) map.checked = false;
+              if (typeof syncToggleStyles === 'function') syncToggleStyles();
+              if (typeof redrawStamp === 'function') redrawStamp();
+              const stop = document.getElementById('tog-compass')?.closest('.toggle-label');
+              let hide = false;
+              document.querySelectorAll('.toggle-label').forEach((row) => {
+                if (hide) row.style.display = 'none';
+                if (row === stop) hide = true;
+              });
+              window.scrollTo(0, 0);
+            }"""
+        )
         mobile.wait_for_timeout(400)
-        mobile.evaluate("() => window.scrollTo(0, 0)")
-        # Crop to content width (avoid side letterboxing if any)
+        clip = mobile.evaluate(
+            """() => {
+              const card = document.querySelector('.tool-card');
+              const nav = document.querySelector('nav') || document.querySelector('header');
+              const toggles = [...document.querySelectorAll('.toggle-label')];
+              const top = Math.max(0, (nav ? nav.getBoundingClientRect().top : 0));
+              let bottom = card.getBoundingClientRect().bottom;
+              const limit = window.innerHeight - 8;
+              // Keep only toggle rows that fit completely.
+              for (const row of toggles) {
+                const b = row.getBoundingClientRect();
+                if (b.bottom <= limit) bottom = b.bottom + 12;
+                else break;
+              }
+              const templates = document.querySelector('.template-btns');
+              if (bottom < (templates?.getBoundingClientRect().bottom || 0)) {
+                bottom = templates.getBoundingClientRect().bottom + 16;
+              }
+              return {
+                x: 0,
+                y: Math.floor(top),
+                width: 390,
+                height: Math.ceil(bottom - top),
+              };
+            }"""
+        )
         mobile.screenshot(
             path=str(OUT / "altto-05-mobile.jpg"),
             type="jpeg",
             quality=90,
+            clip=clip,
         )
-        print("05 mobile")
+        print("05 mobile", clip)
         browser.close()
 
         # Prefer Pro stamp close-up for slot 02 if tool chrome is noisy — keep tool-pro as primary
